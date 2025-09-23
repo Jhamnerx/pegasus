@@ -12,6 +12,14 @@ use App\Http\Controllers\ServicioController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SelectController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\InstallController;
+
+// Rutas de instalación (sin middleware de autenticación)
+Route::prefix('install')->group(function () {
+    Route::get('/', [InstallController::class, 'index'])->name('install.index');
+    Route::post('/run', [InstallController::class, 'install'])->name('install.run');
+    Route::get('/system-info', [InstallController::class, 'systemInfo'])->name('install.system-info');
+});
 
 // Rutas públicas para recibos (sin autenticación)
 Route::get('/recibo/{uuid}/pdf', [PublicReciboController::class, 'pdf'])->name('public.recibo.pdf');

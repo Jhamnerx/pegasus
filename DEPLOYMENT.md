@@ -1,4 +1,5 @@
 # Guía de Despliegue - Pegasus GPS System
+
 ## 🚀 Despliegue en cPanel SIN acceso a Terminal
 
 ### 1. Configurar Git Repository en cPanel
@@ -7,9 +8,9 @@
 2. **Busca "Git™ Version Control"** en la sección Files
 3. **Hacer clic en "Create"**
 4. **Llenar los campos:**
-   - Repository URL: `https://github.com/Jhamnerx/pegasus.git`
-   - Repository Path: `/repositories/pegasus` (o el nombre que prefieras)  
-   - Branch: `master`
+    - Repository URL: `https://github.com/Jhamnerx/pegasus.git`
+    - Repository Path: `/repositories/pegasus` (o el nombre que prefieras)
+    - Branch: `master`
 5. **Hacer clic en "Create"**
 6. **Esperar a que termine la clonación del repositorio**
 
@@ -63,14 +64,17 @@ ALERT_DAYS=15,7,3,1
 ### 3. Generar APP_KEY (usando cPanel Terminal o PHP Web)
 
 **Opción A: Si tienes Terminal en cPanel:**
+
 ```bash
 cd /home/tu_usuario/repositories/pegasus
 php artisan key:generate
 ```
 
 **Opción B: Sin Terminal - Crear archivo PHP temporal:**
+
 1. **En File Manager**, crear un archivo llamado `generate_key.php` en la carpeta del proyecto
 2. **Contenido del archivo:**
+
 ```php
 <?php
 require_once 'vendor/autoload.php';
@@ -79,6 +83,7 @@ echo "APP_KEY=" . $key;
 file_put_contents('.env.key', $key);
 ?>
 ```
+
 3. **Ejecutar** visitando `https://tudominio.com/generate_key.php`
 4. **Copiar el resultado** y actualizar APP_KEY en el archivo `.env`
 5. **ELIMINAR** el archivo `generate_key.php` por seguridad
@@ -88,29 +93,31 @@ file_put_contents('.env.key', $key);
 1. **En cPanel**, ir a **"MySQL Databases"**
 2. **Crear una base de datos** nueva
 3. **Crear un usuario** MySQL y asignarlo a la base de datos
-4. **Actualizar** los datos DB_* en el archivo `.env`
+4. **Actualizar** los datos DB\_\* en el archivo `.env`
 
 ### 5. Instalar Dependencias (usando cPanel PHP Selector)
 
 1. **En cPanel**, buscar **"Select PHP Version"** o **"PHP Selector"**
 2. **Seleccionar PHP 8.3** (o superior)
 3. **Ir a Extensions** y habilitar las extensiones necesarias:
-   - mysqli
-   - pdo_mysql
-   - zip
-   - xml
-   - gd
-   - fileinfo
-   - mbstring
-   - curl
+
+    - mysqli
+    - pdo_mysql
+    - zip
+    - xml
+    - gd
+    - fileinfo
+    - mbstring
+    - curl
 
 4. **Para Composer** (si no está instalado):
-   - Contactar soporte técnico del hosting
-   - O usar una herramienta web como **"Softaculous"** si está disponible
+    - Contactar soporte técnico del hosting
+    - O usar una herramienta web como **"Softaculous"** si está disponible
 
 ### 6. Ejecutar Migraciones (crear archivo PHP)
 
 **Crear archivo `migrate.php` en la carpeta del proyecto:**
+
 ```php
 <?php
 // migrate.php
@@ -129,49 +136,92 @@ echo "</pre>";
 **Ejecutar** visitando `https://tudominio.com/migrate.php`
 **ELIMINAR** el archivo después de usar
 
-### 7. Enlazar Dominio
+### 7. Enlazar Dominio con Enlace Simbólico
 
-1. **En cPanel**, ir a **"Subdomains"** o **"Addon Domains"**
-2. **Para el dominio principal:**
-   - Ir a **"File Manager"**
-   - **Renombrar** la carpeta `public_html` a `public_html_backup`
-   - **Crear un symbolic link** o mover el contenido:
-     - Opción A: Mover todo de `/repositories/pegasus/public` a una nueva carpeta `public_html`
-     - Opción B: En **"File Manager"**, usar **"Link"** para crear enlace simbólico
+#### 🎯 Objetivo: Que tu dominio apunte a `/repositories/pegasus/public`
 
-3. **Para subdominios:**
-   - **Document Root:** `/repositories/pegasus/public`
+#### **Opción A: Dominio Principal (recomendado)**
+
+1. **En File Manager**, navega a tu directorio home (`/home/tu_usuario/`)
+2. **Hacer backup** de la carpeta actual:
+    - Renombrar `public_html` a `public_html_backup`
+3. **Crear enlace simbólico** a la carpeta public de Laravel:
+
+**Si tienes acceso a Terminal:**
+
+```bash
+ln -s /home/tu_usuario/repositories/pegasus/public /home/tu_usuario/public_html
+```
+
+**Si NO tienes Terminal (usando File Manager):**
+
+1. **Clic derecho** en el espacio vacío del File Manager
+2. **Buscar opción "Create Link"** o **"Symbolic Link"**
+3. **Target:** `/home/tu_usuario/repositories/pegasus/public`
+4. **Link Name:** `public_html`
+
+**Si no hay opción de enlace simbólico:**
+
+1. **Crear nueva carpeta** llamada `public_html`
+2. **Copiar TODO el contenido** de `/repositories/pegasus/public/` a `public_html/`
+3. **Nota:** Tendrás que repetir esto cada vez que actualices el código
+
+#### **Opción B: Subdominio**
+
+1. **En cPanel** → **"Subdomains"**
+2. **Crear subdomain:** `app` (resultará en `app.tudominio.com`)
+3. **Document Root:** `/repositories/pegasus/public`
+
+#### **Opción C: Addon Domain**
+
+1. **En cPanel** → **"Addon Domains"**
+2. **Agregar nuevo dominio**
+3. **Document Root:** `/repositories/pegasus/public`
+
+#### ✅ **Verificación**
+
+Después de configurar, visita tu dominio y deberías ver la página de Laravel (no la página de Apache por defecto).
+
+#### 🔒 **Seguridad Importante**
+
+Con esta configuración:
+
+-   ✅ Solo la carpeta `public` es accesible por web
+-   ✅ Los archivos `.env`, `storage`, etc. NO son accesibles públicamente
+-   ✅ Es la configuración de seguridad recomendada para Laravel
 
 ### 8. Configurar Cron Jobs
 
 1. **Ir a "Cron Jobs"** en cPanel
 2. **Agregar cron job para Laravel Scheduler:**
-   - **Minuto:** `*`
-   - **Hora:** `*`
-   - **Día:** `*`
-   - **Mes:** `*`
-   - **Día de la semana:** `*`
-   - **Comando:** `cd /home/tu_usuario/repositories/pegasus && php artisan schedule:run >/dev/null 2>&1`
+
+    - **Minuto:** `*`
+    - **Hora:** `*`
+    - **Día:** `*`
+    - **Mes:** `*`
+    - **Día de la semana:** `*`
+    - **Comando:** `cd /home/tu_usuario/repositories/pegasus && php artisan schedule:run >/dev/null 2>&1`
 
 3. **Agregar cron job para Queue Worker:**
-   - **Minuto:** `0`
-   - **Hora:** `*`
-   - **Día:** `*`
-   - **Mes:** `*`
-   - **Día de la semana:** `*`
-   - **Comando:** `cd /home/tu_usuario/repositories/pegasus && php artisan queue:work --daemon --sleep=3 --tries=3 >/dev/null 2>&1 &`
+    - **Minuto:** `0`
+    - **Hora:** `*`
+    - **Día:** `*`
+    - **Mes:** `*`
+    - **Día de la semana:** `*`
+    - **Comando:** `cd /home/tu_usuario/repositories/pegasus && php artisan queue:work --daemon --sleep=3 --tries=3 >/dev/null 2>&1 &`
 
 ### 9. Configurar Permisos (usando File Manager)
 
 1. **En File Manager**, seleccionar las siguientes carpetas:
-   - `storage`
-   - `bootstrap/cache`
+    - `storage`
+    - `bootstrap/cache`
 2. **Hacer clic derecho** → **"Permissions"**
 3. **Cambiar permisos a 755** (lectura, escritura, ejecución para propietario; lectura y ejecución para grupo y otros)
 
 ### 10. Optimización (crear archivo PHP)
 
 **Crear archivo `optimize.php`:**
+
 ```php
 <?php
 require_once 'vendor/autoload.php';
@@ -215,23 +265,26 @@ Si no tienes acceso a NPM, los assets ya están compilados en el repositorio en 
 ## ⚠️ Troubleshooting
 
 ### Si el sitio muestra error 500:
+
 1. Verificar que el archivo `.env` esté configurado correctamente
 2. Verificar permisos de `storage` y `bootstrap/cache`
 3. Revisar logs en `storage/logs/laravel.log`
 
 ### Si no funcionan los jobs:
+
 1. Verificar que los cron jobs estén activos en cPanel
 2. Verificar la ruta correcta en los comandos cron
 3. Probar ejecutando los archivos PHP directamente
 
 ### Si la base de datos no conecta:
-1. Verificar credenciales DB_* en `.env`
+
+1. Verificar credenciales DB\_\* en `.env`
 2. Verificar que el usuario MySQL tenga permisos
 3. Probar conexión desde cPanel → phpMyAdmin
 
 ## 📞 Notas Importantes
 
-- **SIEMPRE eliminar** los archivos PHP temporales después de usarlos
-- **Cambiar permisos** de archivos sensibles a 644
-- **Mantener backup** de la configuración antes de actualizaciones
-- **Contactar soporte** del hosting si necesitas ayuda con Composer o permisos
+-   **SIEMPRE eliminar** los archivos PHP temporales después de usarlos
+-   **Cambiar permisos** de archivos sensibles a 644
+-   **Mantener backup** de la configuración antes de actualizaciones
+-   **Contactar soporte** del hosting si necesitas ayuda con Composer o permisos

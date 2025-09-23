@@ -16,6 +16,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
         ]);
+        
+        // Middleware global para verificar instalación
+        $middleware->web(append: [
+            \App\Http\Middleware\CheckInstallation::class,
+        ]);
     })
     ->withSchedule(function (Schedule $schedule) {
         // Crear recibos diariamente a las 9:00 AM

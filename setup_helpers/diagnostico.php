@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Verificador de configuración de Laravel
  * USAR PARA DIAGNOSTICAR PROBLEMAS
@@ -64,11 +65,11 @@ foreach ($directories as $name => $path) {
 // Verificar configuración Laravel
 if (file_exists(__DIR__ . '/../.env') && file_exists(__DIR__ . '/../vendor/autoload.php')) {
     echo "<h3>⚙️ Configuración Laravel</h3>";
-    
+
     try {
         require_once __DIR__ . '/../vendor/autoload.php';
         $app = require_once __DIR__ . '/../bootstrap/app.php';
-        
+
         // Verificar APP_KEY
         $appKey = env('APP_KEY');
         if ($appKey) {
@@ -76,31 +77,29 @@ if (file_exists(__DIR__ . '/../.env') && file_exists(__DIR__ . '/../vendor/autol
         } else {
             echo "<p style='color: red;'>❌ APP_KEY no configurado</p>";
         }
-        
+
         // Verificar base de datos
         try {
             $db = $app->make('db');
             $db->connection()->getPdo();
             echo "<p style='color: green;'>✅ Conexión a base de datos OK</p>";
-            
+
             // Verificar migraciones
             $migrationFiles = glob(__DIR__ . '/../database/migrations/*.php');
             echo "<p><strong>Migraciones disponibles:</strong> " . count($migrationFiles) . "</p>";
-            
         } catch (Exception $e) {
             echo "<p style='color: red;'>❌ Error de base de datos: " . $e->getMessage() . "</p>";
         }
-        
+
         // Verificar configuración WhatsApp
         $whatsappUrl = env('WHATSAPP_API_URL');
         $whatsappKey = env('WHATSAPP_API_KEY');
-        
+
         if ($whatsappUrl && $whatsappKey) {
             echo "<p style='color: green;'>✅ WhatsApp configurado</p>";
         } else {
             echo "<p style='color: orange;'>⚠️ WhatsApp no configurado completamente</p>";
         }
-        
     } catch (Exception $e) {
         echo "<p style='color: red;'>❌ Error cargando Laravel: " . $e->getMessage() . "</p>";
     }
@@ -112,7 +111,7 @@ $logFile = __DIR__ . '/../storage/logs/laravel.log';
 if (file_exists($logFile)) {
     $lines = file($logFile);
     $recentLines = array_slice($lines, -10);
-    
+
     echo "<pre style='background: #f4f4f4; padding: 10px; max-height: 200px; overflow-y: scroll;'>";
     foreach ($recentLines as $line) {
         echo htmlspecialchars($line);
@@ -124,4 +123,3 @@ if (file_exists($logFile)) {
 
 echo "<hr>";
 echo "<p><em>Diagnóstico completado - " . date('Y-m-d H:i:s') . "</em></p>";
-?>
