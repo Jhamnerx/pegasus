@@ -1,6 +1,5 @@
 # Guía de Despliegue - Pegasus GPS System
-
-## Pasos para despliegue en cPanel con Git
+## 🚀 Despliegue en cPanel SIN acceso a Terminal
 
 ### 1. Configurar Git Repository en cPanel
 
@@ -9,157 +8,230 @@
 3. **Hacer clic en "Create"**
 4. **Llenar los campos:**
    - Repository URL: `https://github.com/Jhamnerx/pegasus.git`
-   - Repository Path: `/repositories/pegasus` (o el nombre que prefieras)
+   - Repository Path: `/repositories/pegasus` (o el nombre que prefieras)  
    - Branch: `master`
 5. **Hacer clic en "Create"**
+6. **Esperar a que termine la clonación del repositorio**
 
-### 2. Configurar Variables de Entorno
+### 2. Configurar Variables de Entorno (usando File Manager)
 
-1. **Crear archivo .env** en la carpeta del repositorio clonado:
-   ```bash
-   cp .env.production.example .env
-   ```
+1. **Abrir File Manager** en cPanel
+2. **Navegar a la carpeta** `/repositories/pegasus` (donde se clonó el repo)
+3. **Buscar el archivo** `.env.production.example`
+4. **Hacer clic derecho** en `.env.production.example` → **Copy**
+5. **Pegar en la misma carpeta** y renombrar la copia a `.env`
+6. **Hacer clic derecho** en `.env` → **Edit**
+7. **Modificar los valores** con tu configuración:
 
-2. **Editar el archivo .env** con los datos de tu servidor:
-   - APP_URL: Tu dominio real (https://tudominio.com)
-   - DB_*: Configuración de tu base de datos MySQL
-   - MAIL_*: Configuración de tu servidor de correo
-   - WHATSAPP_*: Configuración de tu API de WhatsApp
+```env
+APP_NAME="Pegasus GPS"
+APP_ENV=production
+APP_KEY=base64:GENERAR_ESTO_MAS_ADELANTE
+APP_DEBUG=false
+APP_TIMEZONE=America/Lima
+APP_URL=https://tudominio.com
 
-3. **Generar APP_KEY:**
-   ```bash
-   php artisan key:generate
-   ```
+# Database - Obtener estos datos de cPanel → MySQL Databases
+DB_CONNECTION=mysql
+DB_HOST=localhost
+DB_PORT=3306
+DB_DATABASE=tu_usuario_nombre_bd
+DB_USERNAME=tu_usuario_mysql
+DB_PASSWORD=tu_password_mysql
 
-### 3. Instalar Dependencias
+# Mail - Configurar según tu hosting
+MAIL_MAILER=smtp
+MAIL_HOST=mail.tudominio.com
+MAIL_PORT=587
+MAIL_USERNAME=noreply@tudominio.com
+MAIL_PASSWORD=tu_password_email
+MAIL_ENCRYPTION=tls
+MAIL_FROM_ADDRESS=noreply@tudominio.com
+MAIL_FROM_NAME="${APP_NAME}"
 
-```bash
-# Instalar dependencias de PHP
-composer install --optimize-autoloader --no-dev
+# WhatsApp
+WHATSAPP_API_URL=http://messages.synthesisgroup.pe/send-message
+WHATSAPP_API_KEY=tu_api_key_whatsapp
+WHATSAPP_SENDER=51915274968
 
-# Instalar dependencias de Node.js
-npm install
-
-# Compilar assets para producción
-npm run build
+# Jobs
+ALERT_DAYS=15,7,3,1
 ```
 
-### 4. Configurar Base de Datos
+8. **Guardar** el archivo `.env`
 
+### 3. Generar APP_KEY (usando cPanel Terminal o PHP Web)
+
+**Opción A: Si tienes Terminal en cPanel:**
 ```bash
-# Ejecutar migraciones
-php artisan migrate --force
-
-# Ejecutar seeders (opcional)
-php artisan db:seed --force
+cd /home/tu_usuario/repositories/pegasus
+php artisan key:generate
 ```
 
-### 5. Configurar Permisos
+**Opción B: Sin Terminal - Crear archivo PHP temporal:**
+1. **En File Manager**, crear un archivo llamado `generate_key.php` en la carpeta del proyecto
+2. **Contenido del archivo:**
+```php
+<?php
+require_once 'vendor/autoload.php';
+$key = 'base64:' . base64_encode(random_bytes(32));
+echo "APP_KEY=" . $key;
+file_put_contents('.env.key', $key);
+?>
+```
+3. **Ejecutar** visitando `https://tudominio.com/generate_key.php`
+4. **Copiar el resultado** y actualizar APP_KEY en el archivo `.env`
+5. **ELIMINAR** el archivo `generate_key.php` por seguridad
 
-```bash
-# Dar permisos a las carpetas necesarias
-chmod -R 755 storage bootstrap/cache
-chown -R www-data:www-data storage bootstrap/cache
+### 4. Configurar Base de Datos (usando cPanel)
+
+1. **En cPanel**, ir a **"MySQL Databases"**
+2. **Crear una base de datos** nueva
+3. **Crear un usuario** MySQL y asignarlo a la base de datos
+4. **Actualizar** los datos DB_* en el archivo `.env`
+
+### 5. Instalar Dependencias (usando cPanel PHP Selector)
+
+1. **En cPanel**, buscar **"Select PHP Version"** o **"PHP Selector"**
+2. **Seleccionar PHP 8.3** (o superior)
+3. **Ir a Extensions** y habilitar las extensiones necesarias:
+   - mysqli
+   - pdo_mysql
+   - zip
+   - xml
+   - gd
+   - fileinfo
+   - mbstring
+   - curl
+
+4. **Para Composer** (si no está instalado):
+   - Contactar soporte técnico del hosting
+   - O usar una herramienta web como **"Softaculous"** si está disponible
+
+### 6. Ejecutar Migraciones (crear archivo PHP)
+
+**Crear archivo `migrate.php` en la carpeta del proyecto:**
+```php
+<?php
+// migrate.php
+require_once 'vendor/autoload.php';
+
+$app = require_once 'bootstrap/app.php';
+$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+
+echo "<pre>";
+$exitCode = $kernel->call('migrate', ['--force' => true]);
+echo "Migration exit code: " . $exitCode . "\n";
+echo "</pre>";
+?>
 ```
 
-### 6. Enlazar Dominio
+**Ejecutar** visitando `https://tudominio.com/migrate.php`
+**ELIMINAR** el archivo después de usar
 
-1. **En cPanel, ir a "Subdomains" o "Addon Domains"**
-2. **Configurar el Document Root hacia:**
-   ```
-   /repositories/pegasus/public
-   ```
-   (Reemplaza "repositories/pegasus" con la ruta donde clonaste el repo)
+### 7. Enlazar Dominio
 
-### 7. Configurar Cron Jobs
+1. **En cPanel**, ir a **"Subdomains"** o **"Addon Domains"**
+2. **Para el dominio principal:**
+   - Ir a **"File Manager"**
+   - **Renombrar** la carpeta `public_html` a `public_html_backup`
+   - **Crear un symbolic link** o mover el contenido:
+     - Opción A: Mover todo de `/repositories/pegasus/public` a una nueva carpeta `public_html`
+     - Opción B: En **"File Manager"**, usar **"Link"** para crear enlace simbólico
 
-1. **Ir a "Cron Jobs" en cPanel**
-2. **Agregar estos dos cron jobs:**
+3. **Para subdominios:**
+   - **Document Root:** `/repositories/pegasus/public`
 
-   **Para Laravel Scheduler (cada minuto):**
-   ```bash
-   * * * * * cd /home/tu_usuario/repositories/pegasus && php artisan schedule:run >> /dev/null 2>&1
-   ```
+### 8. Configurar Cron Jobs
 
-   **Para Queue Worker (reinicia cada hora):**
-   ```bash
-   0 * * * * cd /home/tu_usuario/repositories/pegasus && php artisan queue:restart
-   1 * * * * cd /home/tu_usuario/repositories/pegasus && php artisan queue:work --daemon --sleep=3 --tries=3 &
-   ```
+1. **Ir a "Cron Jobs"** en cPanel
+2. **Agregar cron job para Laravel Scheduler:**
+   - **Minuto:** `*`
+   - **Hora:** `*`
+   - **Día:** `*`
+   - **Mes:** `*`
+   - **Día de la semana:** `*`
+   - **Comando:** `cd /home/tu_usuario/repositories/pegasus && php artisan schedule:run >/dev/null 2>&1`
 
-### 8. Configuraciones Adicionales
+3. **Agregar cron job para Queue Worker:**
+   - **Minuto:** `0`
+   - **Hora:** `*`
+   - **Día:** `*`
+   - **Mes:** `*`
+   - **Día de la semana:** `*`
+   - **Comando:** `cd /home/tu_usuario/repositories/pegasus && php artisan queue:work --daemon --sleep=3 --tries=3 >/dev/null 2>&1 &`
 
-1. **Optimizar configuración:**
-   ```bash
-   php artisan config:cache
-   php artisan route:cache
-   php artisan view:cache
-   ```
+### 9. Configurar Permisos (usando File Manager)
 
-2. **Crear storage link:**
-   ```bash
-   php artisan storage:link
-   ```
+1. **En File Manager**, seleccionar las siguientes carpetas:
+   - `storage`
+   - `bootstrap/cache`
+2. **Hacer clic derecho** → **"Permissions"**
+3. **Cambiar permisos a 755** (lectura, escritura, ejecución para propietario; lectura y ejecución para grupo y otros)
 
-### 9. Verificación Final
+### 10. Optimización (crear archivo PHP)
 
-1. **Verificar que el sitio carga correctamente**
-2. **Probar login en el sistema**
-3. **Verificar que los jobs funcionan:**
-   ```bash
-   php artisan queue:work --once
-   ```
+**Crear archivo `optimize.php`:**
+```php
+<?php
+require_once 'vendor/autoload.php';
+$app = require_once 'bootstrap/app.php';
+$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
 
-## Comandos Importantes para Mantener
+echo "<pre>";
+echo "Configurando cache...\n";
+$kernel->call('config:cache');
 
-### Para actualizar código desde Git:
-```bash
-cd /ruta/a/tu/repositorio
-git pull origin master
-composer install --optimize-autoloader --no-dev
-npm run build
-php artisan migrate --force
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+echo "Configurando rutas...\n";
+$kernel->call('route:cache');
+
+echo "Configurando vistas...\n";
+$kernel->call('view:cache');
+
+echo "Creando storage link...\n";
+$kernel->call('storage:link');
+
+echo "¡Optimización completada!\n";
+echo "</pre>";
+?>
 ```
 
-### Para monitorear colas:
-```bash
-php artisan queue:work --verbose
-```
+**Ejecutar** y **eliminar** después de usar.
 
-### Para ejecutar scheduler manualmente:
-```bash
-php artisan schedule:run
-```
+### 11. Compilar Assets (alternativa sin NPM)
 
-## Estructura de Cron Jobs Recomendada
+Si no tienes acceso a NPM, los assets ya están compilados en el repositorio en la carpeta `public/build`.
 
-```bash
-# Laravel Scheduler - cada minuto
-* * * * * cd /ruta/completa/al/proyecto && php artisan schedule:run >> /dev/null 2>&1
+**Solo asegúrate de que la carpeta `public/build` exista y tenga contenido.**
 
-# Queue Worker - reiniciar cada hora
-0 * * * * cd /ruta/completa/al/proyecto && php artisan queue:restart
-1 * * * * cd /ruta/completa/al/proyecto && php artisan queue:work --daemon --sleep=3 --tries=3 > /dev/null 2>&1 &
+## 🔄 Para Actualizaciones Futuras
 
-# Limpiar logs antiguos - cada día a las 2 AM
-0 2 * * * cd /ruta/completa/al/proyecto && php artisan log:clear
-```
+1. **En cPanel → Git Version Control**
+2. **Buscar tu repositorio**
+3. **Hacer clic en "Pull"** para actualizar el código
+4. **Ejecutar el archivo `optimize.php`** nuevamente
+5. **Ejecutar `migrate.php`** si hay nuevas migraciones
 
-## Troubleshooting
+## ⚠️ Troubleshooting
 
-### Si las colas no funcionan:
-1. Verificar que los cron jobs estén corriendo
-2. Revisar logs: `tail -f storage/logs/laravel.log`
-3. Ejecutar manualmente: `php artisan queue:work --once`
+### Si el sitio muestra error 500:
+1. Verificar que el archivo `.env` esté configurado correctamente
+2. Verificar permisos de `storage` y `bootstrap/cache`
+3. Revisar logs en `storage/logs/laravel.log`
 
-### Si el scheduler no funciona:
-1. Verificar cron job del scheduler
-2. Ejecutar manualmente: `php artisan schedule:run`
-3. Listar tareas programadas: `php artisan schedule:list`
+### Si no funcionan los jobs:
+1. Verificar que los cron jobs estén activos en cPanel
+2. Verificar la ruta correcta en los comandos cron
+3. Probar ejecutando los archivos PHP directamente
 
-### Si WhatsApp no envía mensajes:
-1. Verificar configuración WHATSAPP_* en .env
-2. Probar con Tinker: `php artisan tinker` -> `app('whatsapp')->sendMessage('51999999999', 'Test')`
+### Si la base de datos no conecta:
+1. Verificar credenciales DB_* en `.env`
+2. Verificar que el usuario MySQL tenga permisos
+3. Probar conexión desde cPanel → phpMyAdmin
+
+## 📞 Notas Importantes
+
+- **SIEMPRE eliminar** los archivos PHP temporales después de usarlos
+- **Cambiar permisos** de archivos sensibles a 644
+- **Mantener backup** de la configuración antes de actualizaciones
+- **Contactar soporte** del hosting si necesitas ayuda con Composer o permisos
