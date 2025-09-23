@@ -1,0 +1,250 @@
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+
+class ClientesSeeder extends Seeder
+{
+    /**
+     * Run the database seeds.
+     */
+    public function run(): void
+    {
+        $clientes = [
+            // Empresas de Transporte
+            [
+                'id' => 1,
+                'nombre_cliente' => 'Transportes Huanca S.A.C.',
+                'ruc_dni' => '20123456789',
+                'telefono' => '+51 984123456',
+                'correo_electronico' => 'gerencia@transporteshuanca.com',
+                'direccion' => 'Av. Argentina 1234, Lima',
+                'estado' => 'Activo',
+                'created_at' => '2024-01-15 08:30:00',
+                'updated_at' => '2024-01-15 08:30:00',
+            ],
+            [
+                'id' => 2,
+                'nombre_cliente' => 'Distribuidora Los Andes',
+                'ruc_dni' => '20987654321',
+                'telefono' => '+51 956789123',
+                'correo_electronico' => 'administracion@losandes.com',
+                'direccion' => 'Jr. Junín 567, Huancayo',
+                'estado' => 'Activo',
+                'created_at' => '2024-02-10 14:20:00',
+                'updated_at' => '2024-02-10 14:20:00',
+            ],
+            [
+                'id' => 3,
+                'nombre_cliente' => 'Servicios Generales Chavín',
+                'ruc_dni' => '20456789123',
+                'telefono' => '+51 932145678',
+                'correo_electronico' => 'operaciones@chavin.com',
+                'direccion' => 'Av. Huancavelica 890, Huancayo',
+                'estado' => 'Activo',
+                'created_at' => '2024-03-05 10:15:00',
+                'updated_at' => '2024-03-05 10:15:00',
+            ],
+            [
+                'id' => 4,
+                'nombre_cliente' => 'Distribuidora Central',
+                'ruc_dni' => '10998877665',
+                'telefono' => '+51 912345678',
+                'correo_electronico' => 'admin@distribuidoracentral.com',
+                'direccion' => 'Av. Colonial 1020, Lima',
+                'estado' => 'Activo',
+                'created_at' => '2024-04-27 17:02:01',
+                'updated_at' => '2024-04-27 17:02:01',
+            ],
+            [
+                'id' => 5,
+                'nombre_cliente' => 'Constructora Pacífico',
+                'ruc_dni' => '20111222333',
+                'telefono' => '+51 923456789',
+                'correo_electronico' => 'proyectos@constructorapacifico.com',
+                'direccion' => 'Av. Javier Prado 550, Lima',
+                'estado' => 'Inactivo',
+                'created_at' => '2024-04-27 17:02:01',
+                'updated_at' => '2024-04-27 17:02:01',
+            ],
+            // Clientes Individuales
+            [
+                'id' => 6,
+                'nombre_cliente' => 'Micaela Ruiz Tapia',
+                'ruc_dni' => '67567876686',
+                'telefono' => '931893790',
+                'correo_electronico' => 'micaela.ruiz@email.com',
+                'direccion' => 'Jr. Real 456, Huancayo',
+                'estado' => 'Activo',
+                'created_at' => '2024-04-30 18:07:40',
+                'updated_at' => '2024-04-30 18:07:40',
+            ],
+            [
+                'id' => 7,
+                'nombre_cliente' => 'José Sauna Mendoza',
+                'ruc_dni' => '67854321',
+                'telefono' => '986883235',
+                'correo_electronico' => 'jose.sauna@email.com',
+                'direccion' => 'Av. Giráldez 789, Huancayo',
+                'estado' => 'Activo',
+                'created_at' => '2024-08-06 22:04:32',
+                'updated_at' => '2024-08-06 22:04:32',
+            ],
+            [
+                'id' => 8,
+                'nombre_cliente' => 'María González Vega',
+                'ruc_dni' => '45678912',
+                'telefono' => '945123789',
+                'correo_electronico' => 'maria.gonzalez@email.com',
+                'direccion' => 'Jr. Ayacucho 123, Huancayo',
+                'estado' => 'Activo',
+                'created_at' => '2024-05-15 09:30:00',
+                'updated_at' => '2024-05-15 09:30:00',
+            ],
+            [
+                'id' => 9,
+                'nombre_cliente' => 'Carlos Mendoza Silva',
+                'ruc_dni' => '78912345',
+                'telefono' => '967456123',
+                'correo_electronico' => 'carlos.mendoza@email.com',
+                'direccion' => 'Av. Ferrocarril 567, Huancayo',
+                'estado' => 'Activo',
+                'created_at' => '2024-06-20 16:45:00',
+                'updated_at' => '2024-06-20 16:45:00',
+            ],
+            [
+                'id' => 10,
+                'nombre_cliente' => 'Ana Rodríguez Torres',
+                'ruc_dni' => '12345678',
+                'telefono' => '923789456',
+                'correo_electronico' => 'ana.rodriguez@email.com',
+                'direccion' => 'Jr. Puno 890, Huancayo',
+                'estado' => 'Activo',
+                'created_at' => '2024-07-10 11:20:00',
+                'updated_at' => '2024-07-10 11:20:00',
+            ],
+            // Empresas de Construcción
+            [
+                'id' => 11,
+                'nombre_cliente' => 'Construcciones Valle Verde S.A.C.',
+                'ruc_dni' => '20444555666',
+                'telefono' => '+51 934567890',
+                'correo_electronico' => 'proyectos@valleverde.com',
+                'direccion' => 'Av. San Carlos 345, Huancayo',
+                'estado' => 'Activo',
+                'created_at' => '2024-08-15 13:30:00',
+                'updated_at' => '2024-08-15 13:30:00',
+            ],
+            [
+                'id' => 12,
+                'nombre_cliente' => 'Minera Andina del Centro',
+                'ruc_dni' => '20777888999',
+                'telefono' => '+51 978123654',
+                'correo_electronico' => 'logistica@mineraandina.com',
+                'direccion' => 'Carretera Central Km 15, La Oroya',
+                'estado' => 'Activo',
+                'created_at' => '2024-09-01 08:00:00',
+                'updated_at' => '2024-09-01 08:00:00',
+            ],
+            // Más empresas de servicios
+            [
+                'id' => 13,
+                'nombre_cliente' => 'Servicios Múltiples Mantaro',
+                'ruc_dni' => '20333444555',
+                'telefono' => '+51 945678123',
+                'correo_electronico' => 'gerencia@mantaro.com',
+                'direccion' => 'Jr. Ancash 678, Huancayo',
+                'estado' => 'Activo',
+                'created_at' => '2024-09-15 14:45:00',
+                'updated_at' => '2024-09-15 14:45:00',
+            ],
+            [
+                'id' => 14,
+                'nombre_cliente' => 'Transportes Sierra Central',
+                'ruc_dni' => '20666777888',
+                'telefono' => '+51 987654321',
+                'correo_electronico' => 'administracion@sierracentral.com',
+                'direccion' => 'Av. Evitamiento 234, Huancayo',
+                'estado' => 'Activo',
+                'created_at' => '2024-10-01 10:30:00',
+                'updated_at' => '2024-10-01 10:30:00',
+            ],
+            [
+                'id' => 15,
+                'nombre_cliente' => 'Agro Inversiones Huanca',
+                'ruc_dni' => '20555666777',
+                'telefono' => '+51 956789012',
+                'correo_electronico' => 'ventas@agrohuanca.com',
+                'direccion' => 'Km 5 Carretera Huancayo-Chupaca',
+                'estado' => 'Activo',
+                'created_at' => '2024-10-15 16:20:00',
+                'updated_at' => '2024-10-15 16:20:00',
+            ],
+            // Clientes con estados diversos
+            [
+                'id' => 16,
+                'nombre_cliente' => 'Comercial Los Libertadores',
+                'ruc_dni' => '20888999000',
+                'telefono' => '+51 965432109',
+                'correo_electronico' => 'info@libertadores.com',
+                'direccion' => 'Av. Libertad 456, Huancayo',
+                'estado' => 'Inactivo',
+                'created_at' => '2024-11-01 09:15:00',
+                'updated_at' => '2024-11-01 09:15:00',
+            ],
+            [
+                'id' => 17,
+                'nombre_cliente' => 'David Quispe Mamani',
+                'ruc_dni' => '87654321',
+                'telefono' => '998765432',
+                'correo_electronico' => 'david.quispe@email.com',
+                'direccion' => 'Jr. Lima 123, Huancayo',
+                'estado' => 'Activo',
+                'created_at' => '2024-11-10 12:00:00',
+                'updated_at' => '2024-11-10 12:00:00',
+            ],
+            [
+                'id' => 18,
+                'nombre_cliente' => 'Rosa Vargas Huamán',
+                'ruc_dni' => '65432198',
+                'telefono' => '987123456',
+                'correo_electronico' => 'rosa.vargas@email.com',
+                'direccion' => 'Av. Mariscal Castilla 789, Huancayo',
+                'estado' => 'Activo',
+                'created_at' => '2024-11-15 15:30:00',
+                'updated_at' => '2024-11-15 15:30:00',
+            ],
+            [
+                'id' => 19,
+                'nombre_cliente' => 'Transportes Andahuaylas Express',
+                'ruc_dni' => '20112233445',
+                'telefono' => '+51 976543210',
+                'correo_electronico' => 'operaciones@andahuaylasexpress.com',
+                'direccion' => 'Terminal Terrestre, Huancayo',
+                'estado' => 'Activo',
+                'created_at' => '2024-11-20 08:45:00',
+                'updated_at' => '2024-11-20 08:45:00',
+            ],
+            [
+                'id' => 20,
+                'nombre_cliente' => 'Comercializadora Valle Sur',
+                'ruc_dni' => '20554433221',
+                'telefono' => '+51 943210987',
+                'correo_electronico' => 'ventas@vallesur.com',
+                'direccion' => 'Av. Centenario 234, Huancayo',
+                'estado' => 'Activo',
+                'created_at' => '2024-12-01 11:15:00',
+                'updated_at' => '2024-12-01 11:15:00',
+            ],
+        ];
+
+        foreach ($clientes as $cliente) {
+            DB::table('clientes')->updateOrInsert(
+                ['id' => $cliente['id']],
+                $cliente
+            );
+        }
+    }
+}
