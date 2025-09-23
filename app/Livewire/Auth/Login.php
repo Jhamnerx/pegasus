@@ -15,8 +15,8 @@ use Livewire\Component;
 #[Layout('layouts.guest')]
 class Login extends Component
 {
-    #[Validate('required|string')]
-    public string $username = '';
+    #[Validate('required|string|email')]
+    public string $email = '';
 
     #[Validate('required|string')]
     public string $password = '';
@@ -35,53 +35,22 @@ class Login extends Component
      */
     public function login(): void
     {
-        $this->isLoading = true;
-        $this->clearError();
-
         $this->validate();
 
-        try {
-            $this->ensureIsNotRateLimited();
+        $this->ensureIsNotRateLimited();
 
-            // Intentar login con email o username
-            $credentials = $this->getCredentials();
+        if (! Auth::attempt(['email' => $this->email, 'password' => $this->password], $this->remember)) {
+            RateLimiter::hit($this->throttleKey());
 
-            if (! Auth::attempt($credentials, $this->remember)) {
-                RateLimiter::hit($this->throttleKey());
-
-                $this->error = 'Credenciales incorrectas. Por favor verifica tu usuario y contraseña.';
-                $this->isLoading = false;
-                return;
-            }
-
-            RateLimiter::clear($this->throttleKey());
-            Session::regenerate();
-
-            // Mensaje de bienvenida
-            session()->flash('login_success', '¡Bienvenido! Sesión iniciada como ' . Auth::user()->name);
-
-            $this->redirectIntended(default: route('dashboard', absolute: false), navigate: true);
-        } catch (ValidationException $e) {
-            $this->error = $e->getMessage();
-        } catch (\Exception $e) {
-            $this->error = 'Error de conexión. No se pudo conectar con el servidor.';
-        } finally {
-            $this->isLoading = false;
+            throw ValidationException::withMessages([
+                'email' => __('auth.failed'),
+            ]);
         }
-    }
 
-    /**
-     * Get credentials for authentication
-     */
-    private function getCredentials(): array
-    {
-        // Determinar si es email o username
-        $field = filter_var($this->username, FILTER_VALIDATE_EMAIL) ? 'email' : 'name';
+        RateLimiter::clear($this->throttleKey());
+        Session::regenerate();
 
-        return [
-            $field => $this->username,
-            'password' => $this->password
-        ];
+        $this->redirectIntended(default: route('dashboard.index', absolute: false), navigate: true);
     }
 
     /**
@@ -104,7 +73,6 @@ class Login extends Component
     {
         return '1.0.0';
     }
-
     /**
      * Ensure the authentication request is not rate limited.
      */
@@ -119,16 +87,20 @@ class Login extends Component
         $seconds = RateLimiter::availableIn($this->throttleKey());
 
         throw ValidationException::withMessages([
-            'username' => "Demasiados intentos de inicio de sesión. Por favor intenta de nuevo en {$seconds} segundos.",
+            'email' => __('auth.throttle', [
+                'seconds' => $seconds,
+                'minutes' => ceil($seconds / 60),
+            ]),
         ]);
     }
+
 
     /**
      * Get the authentication rate limiting throttle key.
      */
     protected function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->username) . '|' . request()->ip());
+        return Str::transliterate(Str::lower($this->email) . '|' . request()->ip());
     }
 
     public function render()

@@ -102,7 +102,7 @@
             <div class="text-center text-xs text-white opacity-80 space-y-1">
                 <p>&copy; {{ date('Y') }} {{ $empresaConfig->razon_social ?? 'PEGASUS' }}. Todos los derechos
                     reservados.</p>
-                <p>Desarrollado por Synthesis Group</p>
+                <p>Desarrollado para Synthesis Group</p>
             </div>
         </div>
 

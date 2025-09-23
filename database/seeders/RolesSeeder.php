@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 
 class RolesSeeder extends Seeder
 {
@@ -31,7 +30,7 @@ class RolesSeeder extends Seeder
             ],
             [
                 'id' => 3,
-                'nombre_rol' => 'Consultor',
+                'nombre_rol' => 'Consulta',
                 'descripcion' => 'Solo puede consultar información, generar reportes y ver estadísticas. Sin permisos de edición.',
                 'created_at' => now(),
                 'updated_at' => now(),

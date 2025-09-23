@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('install')->group(function () {
     Route::get('/', [InstallController::class, 'index'])->name('install.index');
     Route::post('/run', [InstallController::class, 'install'])->name('install.run');
+    Route::post('/update', [InstallController::class, 'update'])->name('install.update');
     Route::get('/system-info', [InstallController::class, 'systemInfo'])->name('install.system-info');
 });
 
@@ -57,4 +58,4 @@ Route::middleware(['auth'])->group(function () {
     });
 });
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';

@@ -45,23 +45,17 @@
 
     <!-- Login Form -->
     <form wire:submit="login" class="space-y-5">
-        <!-- Username/Email -->
+
+        <!-- Email -->
         <div>
-            <x-input label="Usuario / Correo Electrónico" id="username" wire:model="username" name="username" required
-                autofocus placeholder="Ingresa tu usuario o email" wire:loading.attr="disabled"
-                autocomplete="username" />
-            @error('username')
-                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-            @enderror
+            <x-input label="Correo Electrónico" id="email" wire:model="email" name="email" required autofocus
+                placeholder="Ingresa tu correo electrónico" wire:loading.attr="disabled" autocomplete="email" />
         </div>
 
         <!-- Password -->
         <div>
             <x-password label="Contraseña" id="password" wire:model="password" name="password" required
                 placeholder="Ingresa tu contraseña" wire:loading.attr="disabled" autocomplete="current-password" />
-            @error('password')
-                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-            @enderror
         </div>
 
         <!-- Remember Me and Forgot Password -->
@@ -123,7 +117,6 @@
     <!-- Additional Info -->
     <div class="text-center pt-4 {{ Route::has('register') ? '' : 'border-t border-gray-200' }}">
         <div class="text-xs text-gray-500 space-y-1">
-            <p>{{ $this->appName }} v{{ $this->appVersion }}</p>
             <p>Sistema de Gestión de Cobranzas</p>
         </div>
     </div>

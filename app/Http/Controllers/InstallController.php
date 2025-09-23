@@ -90,6 +90,43 @@ class InstallController extends Controller
     }
 
     /**
+     * Ejecutar actualización del sistema
+     */
+    public function update(Request $request)
+    {
+        $steps = [];
+        $success = true;
+        $errorMessage = '';
+
+        try {
+            // Paso 1: Ejecutar migraciones
+            $steps[] = $this->runMigrations();
+
+            // Paso 2: Limpiar cache de vistas
+            $steps[] = $this->clearViewCache();
+
+            // Paso 3: Regenerar cache de configuración
+            $steps[] = $this->regenerateConfigCache();
+        } catch (Exception $e) {
+            $success = false;
+            $errorMessage = $e->getMessage();
+            $steps[] = [
+                'name' => 'Error durante la actualización',
+                'status' => 'error',
+                'message' => $e->getMessage(),
+                'details' => $e->getTraceAsString(),
+            ];
+        }
+
+        return response()->json([
+            'success' => $success,
+            'message' => $success ? 'Actualización completada exitosamente' : 'Error durante la actualización',
+            'error' => $errorMessage,
+            'steps' => $steps,
+        ]);
+    }
+
+    /**
      * Verificar requisitos del sistema
      */
     private function checkSystemRequirements(): array
@@ -264,11 +301,6 @@ class InstallController extends Controller
                 if ($newContent !== $envContent) {
                     File::put($envPath, $newContent);
 
-                    // Limpiar cache de config para que tome el nuevo valor
-                    if (function_exists('opcache_reset')) {
-                        opcache_reset();
-                    }
-
                     $message = 'SESSION_DRIVER cambiado a database exitosamente';
                 } else {
                     $message = 'SESSION_DRIVER ya estaba configurado como database';
@@ -365,6 +397,54 @@ class InstallController extends Controller
     private function isAlreadyInstalled(): bool
     {
         return File::exists(storage_path('app/installed'));
+    }
+
+    /**
+     * Limpiar cache de vistas
+     */
+    private function clearViewCache(): array
+    {
+        try {
+            Artisan::call('view:clear');
+            $output = Artisan::output();
+
+            return [
+                'name' => 'Limpiar cache de vistas',
+                'status' => 'success',
+                'message' => 'Cache de vistas limpiado exitosamente',
+                'details' => $output,
+            ];
+        } catch (Exception $e) {
+            return [
+                'name' => 'Limpiar cache de vistas',
+                'status' => 'warning',
+                'message' => 'Error limpiando cache de vistas: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Regenerar cache de configuración
+     */
+    private function regenerateConfigCache(): array
+    {
+        try {
+            Artisan::call('config:cache');
+            $output = Artisan::output();
+
+            return [
+                'name' => 'Regenerar cache de configuración',
+                'status' => 'success',
+                'message' => 'Cache de configuración regenerado exitosamente',
+                'details' => $output,
+            ];
+        } catch (Exception $e) {
+            return [
+                'name' => 'Regenerar cache de configuración',
+                'status' => 'warning',
+                'message' => 'Error regenerando cache de configuración: ' . $e->getMessage(),
+            ];
+        }
     }
 
     /**
