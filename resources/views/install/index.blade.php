@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,25 +10,31 @@
         body {
             font-family: 'Inter', sans-serif;
         }
+
         .step-item {
             transition: all 0.3s ease;
         }
+
         .step-success {
             background-color: #d1fae5;
             border-color: #10b981;
         }
+
         .step-error {
             background-color: #fee2e2;
             border-color: #ef4444;
         }
+
         .step-warning {
             background-color: #fef3c7;
             border-color: #f59e0b;
         }
+
         .step-pending {
             background-color: #f3f4f6;
             border-color: #d1d5db;
         }
+
         .spinner {
             border: 3px solid #f3f3f3;
             border-top: 3px solid #3498db;
@@ -36,20 +43,30 @@
             height: 20px;
             animation: spin 1s linear infinite;
         }
+
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
     </style>
 </head>
+
 <body class="bg-gray-50 min-h-screen">
     <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
         <div class="max-w-md w-full space-y-8">
             <div>
                 <div class="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-blue-600">
                     <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+                        </path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                     </svg>
                 </div>
                 <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
@@ -64,15 +81,18 @@
                 <div id="pre-install" class="space-y-4">
                     <h3 class="text-lg font-medium text-gray-900">Antes de continuar</h3>
                     <p class="text-sm text-gray-600">
-                        Asegúrate de haber configurado correctamente el archivo <code class="bg-gray-100 px-1 rounded">.env</code> 
+                        Asegúrate de haber configurado correctamente el archivo <code
+                            class="bg-gray-100 px-1 rounded">.env</code>
                         con los datos de tu base de datos y demás configuraciones.
                     </p>
-                    
+
                     <div class="bg-yellow-50 border border-yellow-200 rounded-md p-3">
                         <div class="flex">
                             <div class="flex-shrink-0">
                                 <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                                    <path fill-rule="evenodd"
+                                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                        clip-rule="evenodd"></path>
                                 </svg>
                             </div>
                             <div class="ml-3">
@@ -92,15 +112,15 @@
                         </div>
                     </div>
 
-                    <button id="start-install" onclick="startInstallation()" 
-                            class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <button id="start-install" onclick="startInstallation()"
+                        class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                         Iniciar Instalación
                     </button>
                 </div>
 
                 <div id="installation-progress" class="hidden">
                     <h3 class="text-lg font-medium text-gray-900 mb-4">Progreso de Instalación</h3>
-                    
+
                     <div id="steps-container" class="space-y-3">
                         <!-- Los pasos se llenarán dinámicamente -->
                     </div>
@@ -110,7 +130,9 @@
                             <div class="flex">
                                 <div class="flex-shrink-0">
                                     <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                        <path fill-rule="evenodd"
+                                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                            clip-rule="evenodd"></path>
                                     </svg>
                                 </div>
                                 <div class="ml-3">
@@ -118,10 +140,12 @@
                                         ¡Instalación Completada!
                                     </h3>
                                     <div class="mt-2 text-sm text-green-700">
-                                        <p>Pegasus GPS se ha instalado correctamente. Ya puedes comenzar a usar el sistema.</p>
+                                        <p>Pegasus GPS se ha instalado correctamente. Ya puedes comenzar a usar el
+                                            sistema.</p>
                                     </div>
                                     <div class="mt-4">
-                                        <a href="/" class="text-sm font-medium text-green-800 hover:text-green-600">
+                                        <a href="/"
+                                            class="text-sm font-medium text-green-800 hover:text-green-600">
                                             Ir al Sistema →
                                         </a>
                                     </div>
@@ -133,7 +157,9 @@
                             <div class="flex">
                                 <div class="flex-shrink-0">
                                     <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                                        <path fill-rule="evenodd"
+                                            d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                            clip-rule="evenodd"></path>
                                     </svg>
                                 </div>
                                 <div class="ml-3">
@@ -167,18 +193,18 @@
                 });
 
                 const data = await response.json();
-                
+
                 displaySteps(data.steps);
-                
+
                 document.getElementById('installation-result').classList.remove('hidden');
-                
+
                 if (data.success) {
                     document.getElementById('success-message').classList.remove('hidden');
                 } else {
                     document.getElementById('error-message').classList.remove('hidden');
                     document.getElementById('error-text').textContent = data.error || 'Error desconocido';
                 }
-                
+
             } catch (error) {
                 console.error('Error:', error);
                 document.getElementById('installation-result').classList.remove('hidden');
@@ -200,7 +226,7 @@
         function createStepElement(step, number) {
             const div = document.createElement('div');
             div.className = `step-item p-3 border-l-4 rounded ${getStepClass(step.status)}`;
-            
+
             div.innerHTML = `
                 <div class="flex items-center">
                     <div class="flex-shrink-0">
@@ -215,16 +241,20 @@
                     </div>
                 </div>
             `;
-            
+
             return div;
         }
 
         function getStepClass(status) {
             switch (status) {
-                case 'success': return 'step-success';
-                case 'error': return 'step-error';
-                case 'warning': return 'step-warning';
-                default: return 'step-pending';
+                case 'success':
+                    return 'step-success';
+                case 'error':
+                    return 'step-error';
+                case 'warning':
+                    return 'step-warning';
+                default:
+                    return 'step-pending';
             }
         }
 
@@ -242,4 +272,5 @@
         }
     </script>
 </body>
+
 </html>

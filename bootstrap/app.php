@@ -16,7 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
         ]);
-        
+
         // Middleware global para verificar instalación
         $middleware->web(append: [
             \App\Http\Middleware\CheckInstallation::class,

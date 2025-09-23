@@ -56,15 +56,17 @@ class InstallController extends Controller
             // Paso 5: Ejecutar migraciones
             $steps[] = $this->runMigrations();
 
-            // Paso 6: Crear enlace simbólico de storage
+            // Paso 6: Cambiar SESSION_DRIVER a database
+            $steps[] = $this->updateSessionDriver();
+
+            // Paso 7: Crear enlace simbólico de storage
             $steps[] = $this->createStorageLink();
 
-            // Paso 7: Optimizar aplicación
+            // Paso 8: Optimizar aplicación
             $steps[] = $this->optimizeApplication();
 
             // Paso 8: Crear archivo de instalación completada
             $steps[] = $this->markAsInstalled();
-
         } catch (Exception $e) {
             $success = false;
             $errorMessage = $e->getMessage();
@@ -114,8 +116,8 @@ class InstallController extends Controller
         return [
             'name' => 'Verificar requisitos del sistema',
             'status' => empty($missing) ? 'success' : 'error',
-            'message' => empty($missing) 
-                ? 'Todos los requisitos están satisfechos' 
+            'message' => empty($missing)
+                ? 'Todos los requisitos están satisfechos'
                 : 'Faltan requisitos: ' . implode(', ', $missing),
             'details' => $requirements
         ];
@@ -127,7 +129,7 @@ class InstallController extends Controller
     private function checkEnvironmentFile(): array
     {
         $envPath = base_path('.env');
-        
+
         if (!File::exists($envPath)) {
             // Intentar copiar desde .env.example
             $examplePath = base_path('.env.example');
@@ -192,7 +194,7 @@ class InstallController extends Controller
         try {
             Artisan::call('migrate', ['--force' => true]);
             $output = Artisan::output();
-            
+
             return [
                 'name' => 'Ejecutar migraciones de base de datos',
                 'status' => 'success',
@@ -201,6 +203,56 @@ class InstallController extends Controller
             ];
         } catch (Exception $e) {
             throw new Exception('Error ejecutando migraciones: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Cambiar SESSION_DRIVER de file a database después de migraciones
+     */
+    private function updateSessionDriver(): array
+    {
+        try {
+            $envPath = base_path('.env');
+
+            if (File::exists($envPath)) {
+                $envContent = File::get($envPath);
+
+                // Cambiar SESSION_DRIVER de file a database
+                $newContent = preg_replace(
+                    '/^SESSION_DRIVER=file$/m',
+                    'SESSION_DRIVER=database',
+                    $envContent
+                );
+
+                // Solo actualizar si hubo cambio
+                if ($newContent !== $envContent) {
+                    File::put($envPath, $newContent);
+
+                    // Limpiar cache de config para que tome el nuevo valor
+                    if (function_exists('opcache_reset')) {
+                        opcache_reset();
+                    }
+
+                    $message = 'SESSION_DRIVER cambiado a database exitosamente';
+                } else {
+                    $message = 'SESSION_DRIVER ya estaba configurado como database';
+                }
+            } else {
+                throw new Exception('Archivo .env no encontrado');
+            }
+
+            return [
+                'name' => 'Configurar sesiones de base de datos',
+                'status' => 'success',
+                'message' => $message
+            ];
+        } catch (Exception $e) {
+            // No es crítico si esto falla
+            return [
+                'name' => 'Configurar sesiones de base de datos',
+                'status' => 'warning',
+                'message' => 'No se pudo cambiar SESSION_DRIVER: ' . $e->getMessage()
+            ];
         }
     }
 
