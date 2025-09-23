@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
-use Exception;
 
 class InstallController extends Controller
 {
@@ -32,7 +32,7 @@ class InstallController extends Controller
         if ($this->isAlreadyInstalled()) {
             return response()->json([
                 'success' => false,
-                'message' => 'La aplicación ya está instalada.'
+                'message' => 'La aplicación ya está instalada.',
             ]);
         }
 
@@ -56,16 +56,19 @@ class InstallController extends Controller
             // Paso 5: Ejecutar migraciones
             $steps[] = $this->runMigrations();
 
-            // Paso 6: Cambiar SESSION_DRIVER a database
+            // Paso 6: Ejecutar seeders
+            $steps[] = $this->runSeeders();
+
+            // Paso 7: Cambiar SESSION_DRIVER a database
             $steps[] = $this->updateSessionDriver();
 
-            // Paso 7: Crear enlace simbólico de storage
+            // Paso 8: Crear enlace simbólico de storage
             $steps[] = $this->createStorageLink();
 
-            // Paso 8: Optimizar aplicación
+            // Paso 9: Optimizar aplicación
             $steps[] = $this->optimizeApplication();
 
-            // Paso 8: Crear archivo de instalación completada
+            // Paso 10: Crear archivo de instalación completada
             $steps[] = $this->markAsInstalled();
         } catch (Exception $e) {
             $success = false;
@@ -74,7 +77,7 @@ class InstallController extends Controller
                 'name' => 'Error durante la instalación',
                 'status' => 'error',
                 'message' => $e->getMessage(),
-                'details' => $e->getTraceAsString()
+                'details' => $e->getTraceAsString(),
             ];
         }
 
@@ -82,7 +85,7 @@ class InstallController extends Controller
             'success' => $success,
             'message' => $success ? 'Instalación completada exitosamente' : 'Error durante la instalación',
             'error' => $errorMessage,
-            'steps' => $steps
+            'steps' => $steps,
         ]);
     }
 
@@ -108,7 +111,7 @@ class InstallController extends Controller
 
         $missing = [];
         foreach ($requirements as $requirement => $satisfied) {
-            if (!$satisfied) {
+            if (! $satisfied) {
                 $missing[] = $requirement;
             }
         }
@@ -119,7 +122,7 @@ class InstallController extends Controller
             'message' => empty($missing)
                 ? 'Todos los requisitos están satisfechos'
                 : 'Faltan requisitos: ' . implode(', ', $missing),
-            'details' => $requirements
+            'details' => $requirements,
         ];
     }
 
@@ -130,7 +133,7 @@ class InstallController extends Controller
     {
         $envPath = base_path('.env');
 
-        if (!File::exists($envPath)) {
+        if (! File::exists($envPath)) {
             // Intentar copiar desde .env.example
             $examplePath = base_path('.env.example');
             if (File::exists($examplePath)) {
@@ -146,7 +149,7 @@ class InstallController extends Controller
         return [
             'name' => 'Verificar archivo de configuración',
             'status' => 'success',
-            'message' => $message
+            'message' => $message,
         ];
     }
 
@@ -165,7 +168,7 @@ class InstallController extends Controller
         return [
             'name' => 'Generar clave de aplicación',
             'status' => 'success',
-            'message' => $message
+            'message' => $message,
         ];
     }
 
@@ -176,10 +179,11 @@ class InstallController extends Controller
     {
         try {
             DB::connection()->getPdo();
+
             return [
                 'name' => 'Verificar conexión a base de datos',
                 'status' => 'success',
-                'message' => 'Conexión a base de datos exitosa'
+                'message' => 'Conexión a base de datos exitosa',
             ];
         } catch (Exception $e) {
             throw new Exception('Error conectando a la base de datos: ' . $e->getMessage());
@@ -199,10 +203,42 @@ class InstallController extends Controller
                 'name' => 'Ejecutar migraciones de base de datos',
                 'status' => 'success',
                 'message' => 'Migraciones ejecutadas exitosamente',
-                'details' => $output
+                'details' => $output,
             ];
         } catch (Exception $e) {
             throw new Exception('Error ejecutando migraciones: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Ejecutar seeders esenciales
+     */
+    private function runSeeders(): array
+    {
+        try {
+            $seeders = [
+                'RolesSeeder',
+                'ConfiguracionesSeeder',
+                'UsersSeeder',
+            ];
+
+            $output = '';
+            foreach ($seeders as $seeder) {
+                Artisan::call('db:seed', [
+                    '--class' => $seeder,
+                    '--force' => true,
+                ]);
+                $output .= "✓ {$seeder} ejecutado exitosamente\n";
+            }
+
+            return [
+                'name' => 'Ejecutar seeders de configuración inicial',
+                'status' => 'success',
+                'message' => 'Datos iniciales creados exitosamente',
+                'details' => $output,
+            ];
+        } catch (Exception $e) {
+            throw new Exception('Error ejecutando seeders: ' . $e->getMessage());
         }
     }
 
@@ -244,14 +280,14 @@ class InstallController extends Controller
             return [
                 'name' => 'Configurar sesiones de base de datos',
                 'status' => 'success',
-                'message' => $message
+                'message' => $message,
             ];
         } catch (Exception $e) {
             // No es crítico si esto falla
             return [
                 'name' => 'Configurar sesiones de base de datos',
                 'status' => 'warning',
-                'message' => 'No se pudo cambiar SESSION_DRIVER: ' . $e->getMessage()
+                'message' => 'No se pudo cambiar SESSION_DRIVER: ' . $e->getMessage(),
             ];
         }
     }
@@ -262,7 +298,7 @@ class InstallController extends Controller
     private function createStorageLink(): array
     {
         try {
-            if (!File::exists(public_path('storage'))) {
+            if (! File::exists(public_path('storage'))) {
                 Artisan::call('storage:link');
                 $message = 'Enlace simbólico de storage creado';
             } else {
@@ -272,14 +308,14 @@ class InstallController extends Controller
             return [
                 'name' => 'Crear enlace simbólico de storage',
                 'status' => 'success',
-                'message' => $message
+                'message' => $message,
             ];
         } catch (Exception $e) {
             // En algunos hostings el enlace simbólico puede fallar, pero no es crítico
             return [
                 'name' => 'Crear enlace simbólico de storage',
                 'status' => 'warning',
-                'message' => 'No se pudo crear enlace simbólico: ' . $e->getMessage()
+                'message' => 'No se pudo crear enlace simbólico: ' . $e->getMessage(),
             ];
         }
     }
@@ -297,13 +333,13 @@ class InstallController extends Controller
             return [
                 'name' => 'Optimizar aplicación',
                 'status' => 'success',
-                'message' => 'Aplicación optimizada para producción'
+                'message' => 'Aplicación optimizada para producción',
             ];
         } catch (Exception $e) {
             return [
                 'name' => 'Optimizar aplicación',
                 'status' => 'warning',
-                'message' => 'Optimización parcial: ' . $e->getMessage()
+                'message' => 'Optimización parcial: ' . $e->getMessage(),
             ];
         }
     }
@@ -319,7 +355,7 @@ class InstallController extends Controller
         return [
             'name' => 'Finalizar instalación',
             'status' => 'success',
-            'message' => 'Instalación marcada como completada'
+            'message' => 'Instalación marcada como completada',
         ];
     }
 

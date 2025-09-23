@@ -1,20 +1,18 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\PublicReciboController;
-use App\Http\Controllers\CobroController;
-use App\Http\Controllers\PlacaController;
-use App\Http\Controllers\ReciboController;
 use App\Http\Controllers\ClienteController;
-use App\Http\Controllers\ReporteController;
-use App\Http\Controllers\UsuarioController;
-use App\Http\Controllers\ServicioController;
+use App\Http\Controllers\CobroController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\SelectController;
-use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\InstallController;
+use App\Http\Controllers\PublicReciboController;
+use App\Http\Controllers\ReciboController;
+use App\Http\Controllers\ReporteController;
+use App\Http\Controllers\SelectController;
+use App\Http\Controllers\ServicioController;
+use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\UsuarioController;
+use Illuminate\Support\Facades\Route;
 
-// Rutas de instalación (sin middleware de autenticación)
 Route::prefix('install')->group(function () {
     Route::get('/', [InstallController::class, 'index'])->name('install.index');
     Route::post('/run', [InstallController::class, 'install'])->name('install.run');
@@ -23,7 +21,6 @@ Route::prefix('install')->group(function () {
 
 // Rutas públicas para recibos (sin autenticación)
 Route::get('/recibo/{uuid}/pdf', [PublicReciboController::class, 'pdf'])->name('public.recibo.pdf');
-
 
 Route::middleware(['auth'])->group(function () {
     // Settings routes
@@ -37,7 +34,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Rutas principales
     Route::get('/dashboard', [DashboardController::class, 'dashboard'])->name('dashboard.index');
-    Route::get('/', [DashboardController::class, 'dashboard'])->name('dashboard.index');
+    Route::get('/', [DashboardController::class, 'dashboard']);
     Route::get('/clientes', [ClienteController::class, 'index'])->name('clientes.index');
     Route::get('/servicios', [ServicioController::class, 'index'])->name('servicios.index');
     Route::get('/cobros', [CobroController::class, 'index'])->name('cobros.index');
@@ -60,4 +57,4 @@ Route::middleware(['auth'])->group(function () {
     });
 });
 
-require __DIR__ . '/auth.php';
+require __DIR__.'/auth.php';
