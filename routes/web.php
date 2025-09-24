@@ -17,8 +17,9 @@ Route::prefix('install')->group(function () {
     Route::get('/', [InstallController::class, 'index'])->name('install.index');
     Route::post('/run', [InstallController::class, 'install'])->name('install.run');
     Route::get('/update', [InstallController::class, 'update'])->name('install.update');
-    Route::post('/optimize', [InstallController::class, 'optimize'])->name('install.optimize');
+    Route::get('/optimize', [InstallController::class, 'optimize'])->name('install.optimize');
     Route::get('/system-info', [InstallController::class, 'systemInfo'])->name('install.system-info');
+    Route::get('/queue-clear', [InstallController::class, 'queueClear'])->name('install.queue-clear');
 });
 
 Route::get('recibo/{uuid}', [PublicReciboController::class, 'pdf'])->name('public.recibo.pdf');

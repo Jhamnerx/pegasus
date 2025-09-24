@@ -500,4 +500,27 @@ class InstallController extends Controller
 
         return response()->json($info);
     }
+
+    /**
+     * Limpiar la cola de trabajos
+     */
+    public function queueClear()
+    {
+        try {
+            Artisan::call('queue:clear');
+            $output = Artisan::output();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Cola de trabajos limpiada exitosamente',
+                'details' => $output,
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error limpiando la cola de trabajos',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
 }
