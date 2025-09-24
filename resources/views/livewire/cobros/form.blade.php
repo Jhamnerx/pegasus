@@ -164,12 +164,12 @@
         </div>
 
         <x-slot name="footer" class="flex justify-between gap-x-4">
-            @if ($isEditing)
+            {{-- @if ($isEditing)
                 <x-button flat negative label="Eliminar"
                     wire:click="$dispatch('openDeleteModal', { cobroId: {{ $cobro?->id }} })" />
             @else
                 <div></div>
-            @endif
+            @endif --}}
 
             <div class="flex gap-x-4">
                 <x-button flat label="Cancelar" wire:click="closeModal" />

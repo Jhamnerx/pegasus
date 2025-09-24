@@ -29,12 +29,16 @@ return Application::configure(basePath: dirname(__DIR__))
             ->name('crear-recibos-diarios')
             ->withoutOverlapping();
 
-        $schedule->job(new \App\Jobs\CreateRecibosJob())
-            ->everyMinute()
-            ->name('crear-recibos-diarios');
+        // $schedule->job(new \App\Jobs\CreateRecibosJob())
+        //     ->everyMinute()
+        //     ->name('crear-recibos-diarios');
 
         // Notificar vencimientos a las 9:30 AM
         $schedule->job(new \App\Jobs\NotifyVencimientoRecibosJob())
+            ->dailyAt('09:30')
+            ->name('notificar-vencimientos')
+            ->withoutOverlapping();
+        $schedule->job(new \App\Jobs\NotifyRecibosVencidosJob())
             ->dailyAt('09:30')
             ->name('notificar-vencimientos')
             ->withoutOverlapping();
