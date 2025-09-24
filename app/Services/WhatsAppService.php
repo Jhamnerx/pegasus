@@ -128,6 +128,6 @@ class WhatsAppService
      */
     public function generatePdfUrl(string $reciboUuid): string
     {
-        return config('app.url') . "/recibo/{$reciboUuid}/pdf";
+        return config('app.url') . "/recibo/{$reciboUuid}";
     }
 }

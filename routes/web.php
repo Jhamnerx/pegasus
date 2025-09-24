@@ -21,7 +21,7 @@ Route::prefix('install')->group(function () {
     Route::get('/system-info', [InstallController::class, 'systemInfo'])->name('install.system-info');
 });
 
-Route::get('recibo/{uuid}/pdf', [PublicReciboController::class, 'pdf'])->name('public.recibo.pdf');
+Route::get('recibo/{uuid}', [PublicReciboController::class, 'pdf'])->name('public.recibo.pdf');
 
 Route::middleware(['auth'])->group(function () {
     // Settings routes
