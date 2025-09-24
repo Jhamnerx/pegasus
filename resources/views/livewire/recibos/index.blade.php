@@ -40,7 +40,7 @@
                 <!-- Actions -->
                 <div class="md:col-span-2 flex items-end space-x-2">
                     <x-button secondary label="Limpiar Filtros" wire:click="resetFilters" icon="arrow-path" />
-                    <x-button positive label="Exportar CSV" wire:click="exportar" icon="arrow-down-tray" />
+                    <x-button positive label="Exportar Excel" wire:click="abrirModalExport" icon="arrow-down-tray" />
                 </div>
             </div>
         </div>
@@ -380,6 +380,101 @@
                 </div>
             </x-slot>
         @endif
+    </x-modal-card>
+
+    <!-- Modal de exportación -->
+    <x-modal-card title="Exportar Recibos a Excel" wire:model="isOpenExportModal" width="2xl">
+        <div class="space-y-4">
+            <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                <h4 class="font-semibold text-blue-800 dark:text-blue-200 mb-2">
+                    <x-icon name="information-circle" class="w-5 h-5 inline mr-1" />
+                    Configurar Exportación
+                </h4>
+                <p class="text-sm text-blue-700 dark:text-blue-300">
+                    Selecciona los filtros para personalizar tu exportación. Si no seleccionas filtros, se exportarán
+                    todos los recibos.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Filtro por cliente -->
+                <div>
+                    <x-select label="Cliente (Opcional)" placeholder="Todos los clientes"
+                        wire:model="exportFilters.cliente_id" :async-data="[
+                            'api' => route('select.clientes'),
+                            'method' => 'GET',
+                        ]" option-label="label"
+                        option-value="value" />
+                </div>
+
+                <!-- Filtro por estado -->
+                <div>
+                    <x-select label="Estado del Recibo" wire:model="exportFilters.estado" :options="[
+                        ['label' => 'Todos los Estados', 'value' => 'todos'],
+                        ['label' => 'Pendientes', 'value' => 'pendiente'],
+                        ['label' => 'Pagados', 'value' => 'pagado'],
+                        ['label' => 'Vencidos', 'value' => 'vencidos'],
+                        ['label' => 'Anulados', 'value' => 'anulado'],
+                    ]"
+                        option-label="label" option-value="value" />
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Rango de fechas -->
+                <x-input label="Fecha Desde (Opcional)" type="date" wire:model="exportFilters.fecha_desde" />
+
+                <x-input label="Fecha Hasta (Opcional)" type="date" wire:model="exportFilters.fecha_hasta" />
+            </div>
+
+            <!-- Tipo de exportación -->
+            <div class="grid grid-cols-1 gap-4">
+                <x-select label="Tipo de Exportación" wire:model="exportFilters.tipo_detalle" :options="[
+                    ['label' => 'Resumido - Una fila por recibo (placas agrupadas)', 'value' => 'resumido'],
+                    ['label' => 'Detallado - Una fila por cada línea de detalle', 'value' => 'detallado'],
+                ]"
+                    option-label="label" option-value="value" />
+                <div class="text-sm text-blue-600 dark:text-blue-400"
+                    x-show="$wire.exportFilters.tipo_detalle === 'detallado'">
+                    💡 <strong>Detallado:</strong> Incluirá columnas adicionales como concepto, monto por línea,
+                    período, días calculados, etc.
+                </div>
+            </div>
+
+            <div class="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
+                <h5 class="font-medium text-gray-800 dark:text-gray-200 mb-2">El archivo Excel incluirá:</h5>
+                <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                    <li>• Número del recibo</li>
+                    <li>• Información del cliente</li>
+                    <li>• Placa del vehículo</li>
+                    <li>• Servicio contratado</li>
+                    <li>• Monto y fechas</li>
+                    <li>• Estado y método de pago</li>
+                    <li>• Observaciones</li>
+                </ul>
+            </div>
+        </div>
+
+        <x-slot name="footer">
+            <div class="flex justify-end gap-2">
+                <x-button secondary label="Cancelar" wire:click="$set('isOpenExportModal', false)" />
+                <x-button positive wire:click="exportarExcel" icon="arrow-down-tray" wire:loading.attr="disabled"
+                    wire:target="exportarExcel">
+                    <span wire:loading.remove wire:target="exportarExcel">Descargar Excel</span>
+                    <span wire:loading wire:target="exportarExcel" class="flex items-center">
+                        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg"
+                            fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                            </path>
+                        </svg>
+                        Generando Excel...
+                    </span>
+                </x-button>
+            </div>
+        </x-slot>
     </x-modal-card>
 
 </div>

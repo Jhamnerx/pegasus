@@ -195,7 +195,7 @@ class CreateRecibosJob implements ShouldQueue
             $pdfUrl = $whatsAppService->generatePdfUrl($recibo->uuid);
 
             // Generar URL pública del recibo usando UUID
-            $urlPublica = url("/recibo/{$recibo->uuid}");
+            $urlPublica = $pdfUrl;
             $mensaje = $this->generarMensaje($recibo, $urlPublica);
 
             // 1. Primero enviar el mensaje de texto

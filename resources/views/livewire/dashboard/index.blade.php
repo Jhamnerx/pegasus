@@ -93,9 +93,9 @@
                     <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Recibos Recientes</h3>
                 </div>
                 <div class="p-6">
-                    @if (count($cobrosRecientes) > 0)
+                    @if (count($recibosRecientes) > 0)
                         <div class="space-y-4">
-                            @foreach ($cobrosRecientes as $recibo)
+                            @foreach ($recibosRecientes as $recibo)
                                 <div
                                     class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                                     <div class="flex-1">
@@ -165,7 +165,7 @@
 
                         <flux:button href="{{ route('servicios.index') }}" variant="outline" class="w-full">
                             <flux:icon.truck class="w-4 h-4 mr-2" />
-                            Gestionar GPS
+                            Ver Servicios
                         </flux:button>
                     </div>
                 </div>

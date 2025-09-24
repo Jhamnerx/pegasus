@@ -2,34 +2,55 @@
 
 namespace App\Livewire\Recibos;
 
-use Carbon\Carbon;
+use App\Exports\RecibosDetalladoExport;
+use App\Exports\RecibosExport;
 use App\Models\Recibo;
-use Livewire\Component;
-use Livewire\Attributes\On;
-use Livewire\WithPagination;
-use Illuminate\Http\Response;
-use WireUi\Traits\WireUiActions;
-use Livewire\WithoutUrlPagination;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Livewire\Attributes\On;
+use Livewire\Component;
+use Livewire\WithoutUrlPagination;
+use Livewire\WithPagination;
+use Maatwebsite\Excel\Facades\Excel;
+use WireUi\Traits\WireUiActions;
 
 class Index extends Component
 {
-    use WithPagination, WithoutUrlPagination;
     use WireUiActions;
+    use WithoutUrlPagination, WithPagination;
+
     public string $search = '';
+
     public string $estadoFilter = 'todos';
+
     public string $sortField = 'created_at';
+
     public string $sortDirection = 'desc';
+
     public int $perPage = 10;
+
     public ?Recibo $selectedRecibo = null;
+
     public bool $isOpenDetalle = false;
+
     public bool $isOpenPago = false;
+
+    public bool $isOpenExportModal = false;
+
     public array $formPago = [
         'metodo_pago' => '',
         'numero_referencia' => '',
         'monto_pagado' => 0,
         'fecha_pago' => '',
-        'observaciones' => ''
+        'observaciones' => '',
+    ];
+
+    public array $exportFilters = [
+        'cliente_id' => '',
+        'estado' => 'todos',
+        'fecha_desde' => '',
+        'fecha_hasta' => '',
+        'tipo_detalle' => 'resumido', // 'resumido' o 'detallado'
     ];
 
     protected $queryString = [
@@ -50,7 +71,7 @@ class Index extends Component
                 'pagado' => 'Pagados',
                 'vencidos' => 'Vencidos',
                 'anulado' => 'Anulados',
-            ]
+            ],
         ]);
     }
 
@@ -117,9 +138,21 @@ class Index extends Component
             'numero_referencia' => '',
             'monto_pagado' => $recibo->monto_recibo,
             'fecha_pago' => now()->format('Y-m-d'),
-            'observaciones' => ''
+            'observaciones' => '',
         ];
         $this->isOpenPago = true;
+    }
+
+    public function abrirModalExport(): void
+    {
+        $this->exportFilters = [
+            'cliente_id' => '',
+            'estado' => 'todos',
+            'fecha_desde' => '',
+            'fecha_hasta' => '',
+            'tipo_detalle' => 'resumido',
+        ];
+        $this->isOpenExportModal = true;
     }
 
     public function marcarComoPagado(): void
@@ -129,13 +162,13 @@ class Index extends Component
             'formPago.monto_pagado' => 'required|numeric|min:0.01',
             'formPago.fecha_pago' => 'required|date|before_or_equal:today',
             'formPago.numero_referencia' => 'nullable|string|max:100',
-            'formPago.observaciones' => 'nullable|string|max:500'
+            'formPago.observaciones' => 'nullable|string|max:500',
         ], [
             'formPago.metodo_pago.required' => 'El método de pago es obligatorio',
             'formPago.monto_pagado.required' => 'El monto pagado es obligatorio',
             'formPago.monto_pagado.min' => 'El monto debe ser mayor a 0',
             'formPago.fecha_pago.required' => 'La fecha de pago es obligatoria',
-            'formPago.fecha_pago.before_or_equal' => 'La fecha no puede ser futura'
+            'formPago.fecha_pago.before_or_equal' => 'La fecha no puede ser futura',
         ]);
 
         if ($this->selectedRecibo) {
@@ -144,7 +177,7 @@ class Index extends Component
                 'numero_referencia' => $this->formPago['numero_referencia'],
                 'monto_pagado' => $this->formPago['monto_pagado'],
                 'fecha_pago' => $this->formPago['fecha_pago'],
-                'observaciones' => $this->formPago['observaciones']
+                'observaciones' => $this->formPago['observaciones'],
             ]);
 
             // Actualizar el período del cobro si es recurrente
@@ -181,13 +214,13 @@ class Index extends Component
             $cobro->update([
                 'fecha_inicio_periodo' => $nuevaFechaInicio,
                 'fecha_fin_periodo' => $nuevaFechaFin,
-                'estado' => 'activo' // Reactivar para el siguiente período
+                'estado' => 'activo', // Reactivar para el siguiente período
             ]);
 
             // Actualizar el período de todas las placas del cobro
             $cobro->cobroPlacas()->update([
                 'fecha_inicio' => $nuevaFechaInicio,
-                'fecha_fin' => $nuevaFechaFin
+                'fecha_fin' => $nuevaFechaFin,
             ]);
         }
     }
@@ -199,33 +232,37 @@ class Index extends Component
         $this->resetPage();
     }
 
-    public function exportar(): Response
+    public function exportarExcel()
     {
-        $recibos = $this->getRecibosQuery()->get();
+        $this->validate([
+            'exportFilters.fecha_desde' => 'nullable|date',
+            'exportFilters.fecha_hasta' => 'nullable|date|after_or_equal:exportFilters.fecha_desde',
+        ], [
+            'exportFilters.fecha_hasta.after_or_equal' => 'La fecha hasta debe ser posterior o igual a la fecha desde',
+        ]);
 
-        $csv = "Número,Cliente,Placa,Monto,Fecha Emisión,Fecha Vencimiento,Estado,Método Pago,Fecha Pago\n";
+        // Crear nombre del archivo con timestamp
+        $tipoDetalle = $this->exportFilters['tipo_detalle'] === 'detallado' ? '-detallado' : '';
+        $filename = 'recibos-export' . $tipoDetalle . '-' . now()->format('Y-m-d-H-i') . '.xlsx';
 
-        foreach ($recibos as $recibo) {
-            $clienteNombre = $recibo->data_cliente['nombre_cliente'] ?? 'N/A';
-            $placa = $recibo->data_cobro['placa'] ?? 'N/A';
+        // Cerrar modal
+        //$this->isOpenExportModal = false;
 
-            $csv .= sprintf(
-                "%s,%s,%s,%.2f,%s,%s,%s,%s,%s\n",
-                $recibo->numero_recibo,
-                $clienteNombre,
-                $placa,
-                $recibo->monto_recibo,
-                $recibo->fecha_emision?->format('Y-m-d') ?? 'N/A',
-                $recibo->fecha_vencimiento?->format('Y-m-d') ?? 'N/A',
-                $recibo->estado_recibo ?? 'N/A',
-                $recibo->metodo_pago ?? 'N/A',
-                $recibo->fecha_pago?->format('Y-m-d') ?? 'N/A'
-            );
-        }
+        // Elegir la clase de exportación según el tipo de detalle
+        $exportClass = $this->exportFilters['tipo_detalle'] === 'detallado'
+            ? RecibosDetalladoExport::class
+            : RecibosExport::class;
 
-        return response($csv)
-            ->header('Content-Type', 'text/csv')
-            ->header('Content-Disposition', 'attachment; filename="recibos-' . now()->format('Y-m-d') . '.csv"');
+        // Exportar usando Laravel Excel directamente
+        return Excel::download(
+            new $exportClass(
+                $this->exportFilters['cliente_id'],
+                $this->exportFilters['estado'],
+                $this->exportFilters['fecha_desde'],
+                $this->exportFilters['fecha_hasta']
+            ),
+            $filename
+        );
     }
 
     private function getRecibosQuery(): Builder
@@ -254,6 +291,40 @@ class Index extends Component
 
         // Aplicar ordenamiento
         $query->orderBy($this->sortField, $this->sortDirection);
+
+        return $query;
+    }
+
+    private function getExportQuery(): Builder
+    {
+        $query = Recibo::query();
+
+        // Filtro por cliente
+        if (! empty($this->exportFilters['cliente_id'])) {
+            $query->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(data_cliente, '$.id')) = ?", [$this->exportFilters['cliente_id']]);
+        }
+
+        // Filtro por estado
+        if ($this->exportFilters['estado'] !== 'todos') {
+            if ($this->exportFilters['estado'] === 'vencidos') {
+                $query->where('fecha_vencimiento', '<', now())
+                    ->where('estado_recibo', '!=', 'pagado');
+            } else {
+                $query->where('estado_recibo', $this->exportFilters['estado']);
+            }
+        }
+
+        // Filtro por rango de fechas
+        if (! empty($this->exportFilters['fecha_desde'])) {
+            $query->where('fecha_emision', '>=', $this->exportFilters['fecha_desde']);
+        }
+
+        if (! empty($this->exportFilters['fecha_hasta'])) {
+            $query->where('fecha_emision', '<=', $this->exportFilters['fecha_hasta']);
+        }
+
+        // Ordenar por fecha de emisión descendente
+        $query->orderBy('fecha_emision', 'desc');
 
         return $query;
     }

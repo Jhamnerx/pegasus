@@ -28,7 +28,6 @@ class ReciboController extends Controller
         // Obtener configuración de empresa desde la base de datos
         $empresaConfig = $this->obtenerConfiguracionEmpresa();
 
-
         // Generar el PDF
         $pdf = Pdf::loadView('pdf.recibo', compact('recibo', 'empresaConfig'));
 
@@ -36,7 +35,7 @@ class ReciboController extends Controller
         $pdf->setPaper('a4', 'portrait');
 
         // Retornar el PDF para visualizar en el navegador
-        return $pdf->stream('recibo-' . $recibo->numero_recibo . '.pdf');
+        return $pdf->stream('recibo-'.$recibo->numero_recibo.'.pdf');
     }
 
     /**
@@ -54,12 +53,12 @@ class ReciboController extends Controller
                     'telefono' => $configuracion->telefono,
                     'email' => $configuracion->email,
                     'logo' => $configuracion->logo,
-                    'metodos_pago' => $configuracion->metodos_pago ? json_decode($configuracion->metodos_pago, true) : []
+                    'metodos_pago' => $configuracion->metodos_pago ? json_decode($configuracion->metodos_pago, true) : [],
                 ];
             }
         } catch (\Exception $e) {
             // Log del error para debugging
-            Log::warning("Error obteniendo configuración de empresa: " . $e->getMessage());
+            Log::warning('Error obteniendo configuración de empresa: '.$e->getMessage());
         }
 
         // Si no hay datos en BD o hay error, usar valores por defecto
@@ -69,7 +68,7 @@ class ReciboController extends Controller
             'telefono' => null,
             'email' => null,
             'logo' => null,
-            'metodos_pago' => []
+            'metodos_pago' => [],
         ];
     }
 }

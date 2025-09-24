@@ -20,8 +20,7 @@ Route::prefix('install')->group(function () {
     Route::get('/system-info', [InstallController::class, 'systemInfo'])->name('install.system-info');
 });
 
-// Rutas públicas para recibos (sin autenticación)
-Route::get('/recibo/{uuid}/pdf', [PublicReciboController::class, 'pdf'])->name('public.recibo.pdf');
+Route::get('recibo/{uuid}/pdf', [PublicReciboController::class, 'pdf'])->name('public.recibo.pdf');
 
 Route::middleware(['auth'])->group(function () {
     // Settings routes

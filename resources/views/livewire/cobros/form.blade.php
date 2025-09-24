@@ -1,7 +1,6 @@
 <div>
     <!-- Modal para formulario de cobros -->
     <x-modal-card :title="$isEditing ? 'Editar Cobro' : 'Nuevo Cobro'" wire:model.live="isOpen" width="7xl">
-        {{ json_encode($errors->all()) }}
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
             <!-- Cliente -->
             <div class="lg:col-span-3">
@@ -101,7 +100,6 @@
                             <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
                         @enderror
                     </div>
-                    {{ json_encode($placas) }}
                     <!-- Lista de placas -->
                     @if (count($placas) > 0)
                         <div class="space-y-4">
@@ -138,28 +136,6 @@
                                                 </div>
                                             </div>
 
-                                            <!-- Información de cálculo -->
-                                            <div class="bg-gray-50 dark:bg-gray-600 rounded-lg p-3">
-                                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                                                    <div>
-                                                        <span class="text-gray-600 dark:text-gray-300">Días
-                                                            facturados:</span>
-                                                        <span
-                                                            class="font-medium text-gray-900 dark:text-gray-100">{{ $placa['dias_prorrateados'] ?? 'N/A' }}</span>
-                                                    </div>
-                                                    <div>
-                                                        <span class="text-gray-600 dark:text-gray-300">Factor
-                                                            prorrateo:</span>
-                                                        <span
-                                                            class="font-medium text-gray-900 dark:text-gray-100">{{ number_format(($placa['factor_prorateo'] ?? 1) * 100, 2) }}%</span>
-                                                    </div>
-                                                    <div>
-                                                        <span class="text-gray-600 dark:text-gray-300">Monto:</span>
-                                                        <span class="font-bold text-green-600 dark:text-green-400">S/
-                                                            {{ number_format($placa['monto_calculado'], 2) }}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
                                         </div>
                                     @endif
                                 @endforeach

@@ -12,7 +12,7 @@ class Index extends Component
 {
     public $estadisticas = [];
 
-    public $cobrosRecientes = [];
+    public $recibosRecientes = [];
 
     public $alertas = [];
 
@@ -48,29 +48,29 @@ class Index extends Component
             ],
             [
                 'titulo' => 'Recibos Pagados',
-                'valor' => 'S/ ' . number_format($recibosPagados, 2),
+                'valor' => 'S/ '.number_format($recibosPagados, 2),
                 'icono' => 'cash',
                 'color' => 'green',
                 'progreso' => 85,
             ],
             [
                 'titulo' => 'Recibos Pendientes',
-                'valor' => 'S/ ' . number_format($recibosPendientes, 2),
+                'valor' => 'S/ '.number_format($recibosPendientes, 2),
                 'icono' => 'clock',
                 'color' => 'yellow',
                 'progreso' => 65,
             ],
             [
                 'titulo' => 'Recibos Vencidos',
-                'valor' => 'S/ ' . number_format($recibosVencidos, 2),
+                'valor' => 'S/ '.number_format($recibosVencidos, 2),
                 'icono' => 'exclamation-triangle',
                 'color' => 'red',
                 'progreso' => 45,
             ],
         ];
 
-        // Recibos recientes (reemplaza cobros recientes)
-        $this->cobrosRecientes = Recibo::latest()
+        // Recibos recientes
+        $this->recibosRecientes = Recibo::latest()
             ->limit(5)
             ->get()
             ->map(function ($recibo) {
@@ -113,32 +113,34 @@ class Index extends Component
             ];
         }
 
-        // Recibos próximos a vencer (pendientes)
+        // Recibos próximos a vencer (pendientes) - usar días configurables
+        $alertDays = (int) env('ALERT_DAYS', 7);
         $recibosProximosVencer = Recibo::where('estado_recibo', 'pendiente')
-            ->whereBetween('fecha_vencimiento', [now(), now()->addDays(7)])
+            ->whereBetween('fecha_vencimiento', [now(), now()->addDays($alertDays)])
             ->count();
 
         if ($recibosProximosVencer > 0) {
             $this->alertas[] = [
                 'tipo' => 'warning',
                 'titulo' => 'Recibos Próximos a Vencer',
-                'mensaje' => "Tienes {$recibosProximosVencer} recibos que vencen en los próximos 7 días.",
+                'mensaje' => "Tienes {$recibosProximosVencer} recibos que vencen en los próximos {$alertDays} días.",
                 'accion' => 'Ver recibos',
             ];
         }
 
-        // Cobros que no han generado recibos
-        $cobrosActivos = Cobro::where('estado', 'activo')
+        // Cobros activos listos para procesar (sin recibos pendientes y dentro del período de alertas)
+        $cobrosListosProcesar = Cobro::where('estado', 'activo')
+            ->where('fecha_fin_periodo', '<=', now()->addDays($alertDays))
             ->whereDoesntHave('recibos', function ($query) {
                 $query->where('estado_recibo', 'pendiente');
             })
             ->count();
 
-        if ($cobrosActivos > 0) {
+        if ($cobrosListosProcesar > 0) {
             $this->alertas[] = [
                 'tipo' => 'info',
                 'titulo' => 'Cobros Listos para Generar Recibos',
-                'mensaje' => "Tienes {$cobrosActivos} cobros que pueden generar nuevos recibos.",
+                'mensaje' => "Tienes {$cobrosListosProcesar} cobros activos que están próximos a vencer y necesitan generar recibos.",
                 'accion' => 'Generar recibos',
             ];
         }
@@ -163,6 +165,10 @@ class Index extends Component
                 'metodo_pago' => 'Manual desde Dashboard',
                 'monto_pagado' => $recibo->monto_recibo,
             ]);
+
+            // Actualizar el período del cobro si es recurrente
+            $this->actualizarPeriodoCobro($recibo);
+
             $this->cargarDatosDashboard();
             $this->dispatch('recibo-updated', message: 'Recibo marcado como pagado exitosamente.');
         }
@@ -171,6 +177,40 @@ class Index extends Component
     public function refrescarDatos(): void
     {
         $this->cargarDatosDashboard();
+    }
+
+    private function actualizarPeriodoCobro(Recibo $recibo): void
+    {
+        $cobro = $recibo->cobro;
+
+        if ($cobro && in_array($cobro->periodo_facturacion, ['Mensual', 'Bimensual', 'Trimestral', 'Semestral', 'Anual'])) {
+            // Calcular las nuevas fechas según el período
+            $fechaFinActual = \Carbon\Carbon::parse($cobro->fecha_fin_periodo);
+            $nuevaFechaInicio = $fechaFinActual->addDay();
+
+            // Calcular nueva fecha fin según el período
+            $nuevaFechaFin = match ($cobro->periodo_facturacion) {
+                'Mensual' => $nuevaFechaInicio->copy()->addMonth()->subDay(),
+                'Bimensual' => $nuevaFechaInicio->copy()->addMonths(2)->subDay(),
+                'Trimestral' => $nuevaFechaInicio->copy()->addMonths(3)->subDay(),
+                'Semestral' => $nuevaFechaInicio->copy()->addMonths(6)->subDay(),
+                'Anual' => $nuevaFechaInicio->copy()->addYear()->subDay(),
+                default => $nuevaFechaInicio->copy()->addMonth()->subDay()
+            };
+
+            // Actualizar el período del cobro
+            $cobro->update([
+                'fecha_inicio_periodo' => $nuevaFechaInicio,
+                'fecha_fin_periodo' => $nuevaFechaFin,
+                'estado' => 'activo', // Reactivar para el siguiente período
+            ]);
+
+            // Actualizar el período de todas las placas del cobro
+            $cobro->cobroPlacas()->update([
+                'fecha_inicio' => $nuevaFechaInicio,
+                'fecha_fin' => $nuevaFechaFin,
+            ]);
+        }
     }
 
     public function render()
