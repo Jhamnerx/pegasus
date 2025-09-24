@@ -17,6 +17,7 @@ Route::prefix('install')->group(function () {
     Route::get('/', [InstallController::class, 'index'])->name('install.index');
     Route::post('/run', [InstallController::class, 'install'])->name('install.run');
     Route::post('/update', [InstallController::class, 'update'])->name('install.update');
+    Route::post('/optimize', [InstallController::class, 'optimize'])->name('install.optimize');
     Route::get('/system-info', [InstallController::class, 'systemInfo'])->name('install.system-info');
 });
 

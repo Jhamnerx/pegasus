@@ -127,6 +127,37 @@ class InstallController extends Controller
     }
 
     /**
+     * Optimizar la aplicación únicamente
+     */
+    public function optimize(Request $request)
+    {
+        $steps = [];
+        $success = true;
+        $errorMessage = '';
+
+        try {
+            // Ejecutar optimización de la aplicación
+            $steps[] = $this->optimizeApplication();
+        } catch (Exception $e) {
+            $success = false;
+            $errorMessage = $e->getMessage();
+            $steps[] = [
+                'name' => 'Error durante la optimización',
+                'status' => 'error',
+                'message' => $e->getMessage(),
+                'details' => $e->getTraceAsString(),
+            ];
+        }
+
+        return response()->json([
+            'success' => $success,
+            'message' => $success ? 'Optimización completada exitosamente' : 'Error durante la optimización',
+            'error' => $errorMessage,
+            'steps' => $steps,
+        ]);
+    }
+
+    /**
      * Verificar requisitos del sistema
      */
     private function checkSystemRequirements(): array
