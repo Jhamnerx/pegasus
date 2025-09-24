@@ -85,19 +85,48 @@
                 <!-- Estado de Cobros (Gráfico) -->
                 <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg">
                     <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">Estado de Cobros</h3>
-                    <div class="relative" x-data="{
-                        initChart() {
-                            window.initResumenPagosChart({
-                                cobros_pagados: {{ $this->resumenPagos['cobros_pagados'] ?? 0 }},
-                                total_cobros: {{ $this->resumenPagos['total_cobros'] ?? 0 }}
-                            });
-                        }
-                    }" x-init="$nextTick(() => initChart())">
-                        <canvas id="estadoCobrosChart" width="150" height="150"></canvas>
-                    </div>
-                </div>
 
-                <!-- Desglose de Montos -->
+                    <!-- Indicador de carga para el gráfico -->
+                    <div wire:loading wire:target="generarReporte" class="flex items-center justify-center h-40">
+                        <div class="text-center">
+                            <svg class="animate-spin h-6 w-6 text-blue-600 mx-auto mb-2" fill="none"
+                                viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                    stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                </path>
+                            </svg>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Cargando...</p>
+                        </div>
+                    </div>
+
+                    <!-- Gráfico que se muestra cuando no está cargando -->
+                    <div wire:loading.remove wire:target="generarReporte">
+                        <div class="relative" x-data="{
+                            initChart() {
+                                window.initResumenPagosChart({
+                                    cobros_pagados: {{ $this->resumenPagos['cobros_pagados'] ?? 0 }},
+                                    total_cobros: {{ $this->resumenPagos['total_cobros'] ?? 0 }}
+                                });
+                            }
+                        }" x-init="$nextTick(() => initChart())">
+                            <canvas id="estadoCobrosChart" width="150" height="150"></canvas>
+                        </div>
+
+                        <!-- Leyenda estática que no se ve afectada por la opacidad -->
+                        <div class="mt-4 flex justify-center space-x-4">
+                            <div class="flex items-center">
+                                <div class="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                                <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">Pagados</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-3 h-3 bg-orange-500 rounded-full mr-2"></div>
+                                <span class="text-xs text-gray-600 dark:text-gray-400 font-medium">Pendientes</span>
+                            </div>
+                        </div>
+                    </div>
+                </div> <!-- Desglose de Montos -->
                 <div class="bg-yellow-50 dark:bg-yellow-900/20 p-6 rounded-lg">
                     <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">Desglose de Montos</h3>
                     <div class="space-y-3">

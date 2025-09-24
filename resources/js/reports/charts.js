@@ -27,16 +27,7 @@ window.initResumenPagosChart = function (data) {
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        position: "bottom",
-                        labels: {
-                            padding: 10,
-                            fontSize: 12,
-                            color: document.documentElement.classList.contains(
-                                "dark"
-                            )
-                                ? "#e5e7eb"
-                                : "#374151",
-                        },
+                        display: false, // Deshabilitamos la leyenda del chart ya que tenemos una estática
                     },
                     tooltip: {
                         callbacks: {
