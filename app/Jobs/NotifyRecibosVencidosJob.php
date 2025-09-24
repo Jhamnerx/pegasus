@@ -8,7 +8,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
 
-class NotifyVencimientoRecibosJob implements ShouldQueue
+class NotifyRecibosVencidosJob implements ShouldQueue
 {
     use Queueable;
 
@@ -27,12 +27,13 @@ class NotifyVencimientoRecibosJob implements ShouldQueue
     {
         try {
             $hoy = Carbon::now();
-            Log::info('NotifyVencimientoRecibosJob ejecutándose: ' . $hoy->toDateTimeString());
+            Log::info('NotifyRecibosVencidosJob ejecutándose: ' . $hoy->toDateTimeString());
 
-            // Buscar recibos que necesitan notificación hoy
-            $recibosPendientes = Recibo::with('cliente')
-                ->where('estado_recibo', 'pendiente')
-                ->whereDate('proxima_notificacion', '<=', $hoy->toDateString())
+            // Buscar recibos vencidos que aún no han sido notificados por WhatsApp
+            $recibosVencidos = Recibo::with('cliente')
+                ->whereIn('estado_recibo', ['pendiente', 'vencido'])
+                ->whereDate('fecha_vencimiento', '<', $hoy->toDateString())
+                ->where('enviado_whatsapp', 0)
                 ->whereNotNull('data_cliente')
                 ->get()
                 ->filter(function ($recibo) {
@@ -43,59 +44,50 @@ class NotifyVencimientoRecibosJob implements ShouldQueue
                     return ! empty($telefonoDataCliente) || ($cliente && $cliente->tieneTelefono());
                 });
 
-            Log::info('Recibos encontrados para notificar: ' . $recibosPendientes->count());
+            Log::info('Recibos vencidos encontrados para notificar: ' . $recibosVencidos->count());
 
             $notificacionesEnviadas = 0;
 
-            foreach ($recibosPendientes as $recibo) {
+            foreach ($recibosVencidos as $recibo) {
                 try {
-                    $this->enviarNotificacion($recibo);
-                    $this->actualizarProximaNotificacion($recibo);
+                    $this->enviarNotificacionVencido($recibo);
+
+                    // Marcar como enviado por WhatsApp
+                    $recibo->update(['enviado_whatsapp' => 1]);
+
                     $notificacionesEnviadas++;
 
-                    Log::info("Notificación enviada para recibo: {$recibo->numero_recibo}");
+                    Log::info("Notificación de vencido enviada para recibo: {$recibo->numero_recibo}");
                 } catch (\Exception $e) {
-                    Log::error("Error enviando notificación para recibo {$recibo->numero_recibo}: " . $e->getMessage());
+                    Log::error("Error enviando notificación de vencido para recibo {$recibo->numero_recibo}: " . $e->getMessage());
                 }
             }
 
-            // Actualizar estado de recibos vencidos
+            // Actualizar estado de recibos que aún están como pendientes pero ya vencieron
             $this->actualizarRecibosVencidos();
 
-            Log::info("NotifyVencimientoRecibosJob completado. Notificaciones enviadas: {$notificacionesEnviadas}");
+            Log::info("NotifyRecibosVencidosJob completado. Notificaciones de vencidos enviadas: {$notificacionesEnviadas}");
         } catch (\Exception $e) {
-            Log::error('Error en NotifyVencimientoRecibosJob: ' . $e->getMessage());
+            Log::error('Error en NotifyRecibosVencidosJob: ' . $e->getMessage());
             throw $e;
         }
     }
 
     /**
-     * Enviar notificación WhatsApp al cliente
+     * Enviar notificación WhatsApp al cliente por recibo vencido
      */
-    private function enviarNotificacion(Recibo $recibo): void
+    private function enviarNotificacionVencido(Recibo $recibo): void
     {
-        $diasParaVencimiento = Carbon::parse($recibo->fecha_vencimiento)->diffInDays(Carbon::now(), false);
+        $diasVencidos = Carbon::now()->diffInDays(Carbon::parse($recibo->fecha_vencimiento));
+        $diasTexto = "vencido hace {$diasVencidos} día" . ($diasVencidos > 1 ? 's' : '');
 
-        // Determinar el tipo de mensaje
-        if ($diasParaVencimiento > 0) {
-            $tipoMensaje = 'vencido';
-            $diasTexto = "vencido hace {$diasParaVencimiento} días";
-        } elseif ($diasParaVencimiento == 0) {
-            $tipoMensaje = 'vence_hoy';
-            $diasTexto = 'vence HOY';
-        } else {
-            $tipoMensaje = 'proximo_vencimiento';
-            $diasParaVencimiento = abs($diasParaVencimiento);
-            $diasTexto = "vence en {$diasParaVencimiento} días";
-        }
-
-        $mensaje = $this->generarMensaje($recibo, $diasTexto, $tipoMensaje);
+        $mensaje = $this->generarMensajeVencido($recibo, $diasTexto);
 
         // Obtener todos los teléfonos del cliente
         $telefonos = $this->obtenerTelefonosCliente($recibo);
 
         if (empty($telefonos)) {
-            Log::warning("Recibo {$recibo->numero_recibo} no tiene teléfonos registrados");
+            Log::warning("Recibo vencido {$recibo->numero_recibo} no tiene teléfonos registrados");
 
             return;
         }
@@ -110,9 +102,9 @@ class NotifyVencimientoRecibosJob implements ShouldQueue
 
                 if ($enviado) {
                     $enviadoAlMenosUno = true;
-                    Log::info("Mensaje de vencimiento enviado a {$telefono} para recibo {$recibo->numero_recibo}");
+                    Log::info("Mensaje de recibo vencido enviado a {$telefono} para recibo {$recibo->numero_recibo}");
                 } else {
-                    Log::warning("Error enviando mensaje de vencimiento a {$telefono} para recibo {$recibo->numero_recibo}");
+                    Log::warning("Error enviando mensaje de recibo vencido a {$telefono} para recibo {$recibo->numero_recibo}");
                 }
             } catch (\Exception $e) {
                 Log::error("Excepción enviando mensaje a {$telefono}: " . $e->getMessage());
@@ -120,11 +112,11 @@ class NotifyVencimientoRecibosJob implements ShouldQueue
         }
 
         if (! $enviadoAlMenosUno) {
-            throw new \Exception('Error enviando mensaje de recordatorio por WhatsApp a todos los números');
+            throw new \Exception('Error enviando mensaje de recibo vencido por WhatsApp a todos los números');
         }
 
         // Registrar notificación enviada
-        $this->registrarNotificacionEnviada($recibo, $tipoMensaje);
+        $this->registrarNotificacionVencidoEnviada($recibo);
     }
 
     /**
@@ -155,51 +147,31 @@ class NotifyVencimientoRecibosJob implements ShouldQueue
     }
 
     /**
-     * Generar mensaje personalizado según el tipo de vencimiento
+     * Generar mensaje personalizado para recibo vencido
      */
-    private function generarMensaje(Recibo $recibo, string $diasTexto, string $tipoMensaje): string
+    private function generarMensajeVencido(Recibo $recibo, string $diasTexto): string
     {
         // Obtener plantilla desde la base de datos
-        $plantilla = \App\Models\PlantillaMensaje::porTipo('recordatorio_pago');
+        $plantilla = \App\Models\PlantillaMensaje::porTipo('recibo_vencido');
 
         if (! $plantilla) {
-            // Fallback al mensaje original si no existe plantilla
-            $emoji = match ($tipoMensaje) {
-                'vencido' => '🚨',
-                'vence_hoy' => '⚠️',
-                'proximo_vencimiento' => '📋',
-                default => '📋'
-            };
-
-            $saludo = match ($tipoMensaje) {
-                'vencido' => 'RECIBO VENCIDO',
-                'vence_hoy' => 'RECIBO VENCE HOY',
-                'proximo_vencimiento' => 'RECORDATORIO DE PAGO',
-                default => 'RECORDATORIO DE PAGO'
-            };
-
-            // Extraer datos de los campos JSON
+            // Fallback al mensaje por defecto si no existe plantilla
             $clienteNombre = $recibo->data_cliente['nombre_cliente'] ?? 'Cliente';
             $placa = $recibo->data_cobro['placa'] ?? 'Cobro general';
             $servicioNombre = $recibo->data_servicio['nombre'] ?? 'Servicio GPS';
             $periodoFacturacion = $recibo->data_cobro['periodo_facturacion'] ?? 'Mensual';
 
-            $mensaje = "{$emoji} *{$saludo}* {$emoji}\n\n";
+            $mensaje = "🚨 *RECIBO VENCIDO* 🚨\n\n";
             $mensaje .= "Estimado(a) *{$clienteNombre}*,\n\n";
-            $mensaje .= "Le recordamos que tiene un recibo pendiente de pago:\n\n";
+            $mensaje .= "Su recibo está VENCIDO. Le solicitamos regularizar su situación a la brevedad:\n\n";
             $mensaje .= "📄 *Recibo:* {$recibo->numero_recibo}\n";
             $mensaje .= "🚗 *Placa:* {$placa}\n";
             $mensaje .= "🛠️ *Servicio:* {$servicioNombre}\n";
             $mensaje .= "💰 *Monto:* {$recibo->moneda} " . number_format($recibo->monto_recibo, 2) . "\n";
             $mensaje .= "📅 *Período:* {$periodoFacturacion}\n";
             $mensaje .= "⏰ *{$diasTexto}*\n\n";
-
-            if ($tipoMensaje === 'vencido') {
-                $mensaje .= "⚠️ Su recibo está VENCIDO. Por favor, póngase en contacto con nosotros para regularizar su situación.\n\n";
-            } else {
-                $mensaje .= "Para realizar el pago, comuníquese con nosotros.\n\n";
-            }
-
+            $mensaje .= "⚠️ *IMPORTANTE:* Su servicio podría ser suspendido por falta de pago.\n\n";
+            $mensaje .= "Para regularizar su situación, comuníquese urgentemente con nosotros.\n\n";
             $mensaje .= "📞 *PEGASUS S.A.C.*\n";
             $mensaje .= "Sistema GPS y Cobranzas\n\n";
             $mensaje .= '_Este es un mensaje automático del sistema._';
@@ -224,56 +196,18 @@ class NotifyVencimientoRecibosJob implements ShouldQueue
             'dias_texto' => $diasTexto,
             'periodo_facturacion' => $recibo->data_cobro['periodo_facturacion'] ?? 'Mensual',
             'empresa_nombre' => \App\Models\Configuracion::obtenerRazonSocial(),
+            'fecha_vencimiento' => Carbon::parse($recibo->fecha_vencimiento)->format('d/m/Y'),
         ];
 
         return $plantilla->procesarMensaje($variables);
     }
 
     /**
-     * Registrar que se envió una notificación
+     * Registrar que se envió una notificación de vencido
      */
-    private function registrarNotificacionEnviada(Recibo $recibo, string $tipoMensaje): void
+    private function registrarNotificacionVencidoEnviada(Recibo $recibo): void
     {
-        $recibo->registrarNotificacionEnviada($tipoMensaje, Carbon::now());
-    }
-
-    /**
-     * Actualizar la próxima fecha de notificación
-     */
-    private function actualizarProximaNotificacion(Recibo $recibo): void
-    {
-        $alertDays = explode(',', env('ALERT_DAYS', '7,3,1'));
-        $diasOrdenados = collect($alertDays)->map(fn($d) => (int) $d)->sort()->reverse()->values();
-
-        $fechaVencimiento = Carbon::parse($recibo->fecha_vencimiento);
-        $hoy = Carbon::now();
-
-        // Encontrar el próximo día de alerta
-        $proximaNotificacion = null;
-
-        foreach ($diasOrdenados as $dias) {
-            $fechaAlerta = $fechaVencimiento->copy()->subDays($dias);
-
-            if ($fechaAlerta > $hoy) {
-                $proximaNotificacion = $fechaAlerta;
-                break;
-            }
-        }
-
-        // Si no hay más alertas antes del vencimiento, programar para después del vencimiento
-        if (! $proximaNotificacion) {
-            if ($hoy <= $fechaVencimiento) {
-                // Vence hoy o en el futuro - programar para el día del vencimiento
-                $proximaNotificacion = $fechaVencimiento;
-            } else {
-                // Ya vencido - programar para el siguiente día (alertas diarias de vencidos)
-                $proximaNotificacion = $hoy->copy()->addDay();
-            }
-        }
-
-        $recibo->update([
-            'proxima_notificacion' => $proximaNotificacion,
-        ]);
+        $recibo->registrarNotificacionEnviada('recibo_vencido', Carbon::now());
     }
 
     /**

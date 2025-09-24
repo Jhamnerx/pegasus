@@ -12,15 +12,28 @@ class Form extends Component
     use WireUiActions;
 
     public bool $isOpen = false;
+
     public ?Cliente $cliente = null;
+
     public bool $isEditing = false;
 
     // Propiedades del formulario
     public string $nombre_cliente = '';
+
     public string $ruc_dni = '';
+
     public string $telefono = '';
+
+    public string $telefono_1 = '';
+
+    public string $telefono_2 = '';
+
+    public string $telefono_3 = '';
+
     public string $correo_electronico = '';
+
     public string $direccion = '';
+
     public string $estado = 'Activo';
 
     protected function rules(): array
@@ -31,6 +44,9 @@ class Form extends Component
             'nombre_cliente' => 'required|string|max:255',
             'ruc_dni' => 'required|string|max:20|unique:clientes,ruc_dni,' . $clienteId,
             'telefono' => 'nullable|string|max:20',
+            'telefono_1' => 'nullable|string|max:20',
+            'telefono_2' => 'nullable|string|max:20',
+            'telefono_3' => 'nullable|string|max:20',
             'correo_electronico' => 'nullable|email|max:255',
             'direccion' => 'nullable|string|max:500',
             'estado' => 'required|in:Activo,Inactivo',
@@ -42,7 +58,10 @@ class Form extends Component
         return [
             'nombre_cliente' => 'nombre del cliente',
             'ruc_dni' => 'RUC/DNI',
-            'telefono' => 'teléfono',
+            'telefono' => 'teléfono principal',
+            'telefono_1' => 'teléfono 1',
+            'telefono_2' => 'teléfono 2',
+            'telefono_3' => 'teléfono 3',
             'correo_electronico' => 'correo electrónico',
             'direccion' => 'dirección',
             'estado' => 'estado del cliente',
@@ -73,6 +92,9 @@ class Form extends Component
         $this->nombre_cliente = '';
         $this->ruc_dni = '';
         $this->telefono = '';
+        $this->telefono_1 = '';
+        $this->telefono_2 = '';
+        $this->telefono_3 = '';
         $this->correo_electronico = '';
         $this->direccion = '';
         $this->estado = 'Activo';
@@ -85,6 +107,9 @@ class Form extends Component
             $this->nombre_cliente = $this->cliente->nombre_cliente;
             $this->ruc_dni = $this->cliente->ruc_dni;
             $this->telefono = $this->cliente->telefono ?? '';
+            $this->telefono_1 = $this->cliente->telefono_1 ?? '';
+            $this->telefono_2 = $this->cliente->telefono_2 ?? '';
+            $this->telefono_3 = $this->cliente->telefono_3 ?? '';
             $this->correo_electronico = $this->cliente->correo_electronico ?? '';
             $this->direccion = $this->cliente->direccion ?? '';
             $this->estado = $this->cliente->estado;
@@ -100,6 +125,9 @@ class Form extends Component
                 'nombre_cliente' => $this->nombre_cliente,
                 'ruc_dni' => $this->ruc_dni,
                 'telefono' => $this->telefono,
+                'telefono_1' => $this->telefono_1,
+                'telefono_2' => $this->telefono_2,
+                'telefono_3' => $this->telefono_3,
                 'correo_electronico' => $this->correo_electronico,
                 'direccion' => $this->direccion,
                 'estado' => $this->estado,

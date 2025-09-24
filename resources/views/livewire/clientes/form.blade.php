@@ -12,8 +12,16 @@
             <!-- RUC/DNI -->
             <x-input label="RUC/DNI *" placeholder="Ingrese RUC o DNI" wire:model="ruc_dni" />
 
-            <!-- Teléfono -->
-            <x-input label="Teléfono" placeholder="Ingrese el teléfono" wire:model="telefono" />
+            <!-- Teléfonos -->
+            <div class="col-span-1 sm:col-span-2">
+                <h4 class="text-sm font-medium text-gray-700 mb-3">Teléfonos de Contacto</h4>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <x-input label="Teléfono Principal" placeholder="Teléfono principal" wire:model="telefono" />
+                    <x-input label="Teléfono 1" placeholder="Teléfono adicional 1" wire:model="telefono_1" />
+                    <x-input label="Teléfono 2" placeholder="Teléfono adicional 2" wire:model="telefono_2" />
+                    <x-input label="Teléfono 3" placeholder="Teléfono adicional 3" wire:model="telefono_3" />
+                </div>
+            </div>
 
             <!-- Correo Electrónico -->
             <div class="col-span-1 sm:col-span-2">

@@ -2,27 +2,45 @@
 
 namespace App\Livewire\Settings;
 
-use Livewire\Component;
 use App\Models\Configuracion;
+use App\Services\WhatsAppService;
+use Livewire\Component;
 use Livewire\WithFileUploads;
 use WireUi\Traits\WireUiActions;
 
 class Empresa extends Component
 {
-    use WithFileUploads;
     use WireUiActions;
+    use WithFileUploads;
 
     public string $nombre = '';
+
     public string $direccion = '';
+
     public string $telefono = '';
+
     public string $correo = '';
+
     public string $moneda = '';
+
     public $logo;
+
     public string $logoUrl = '';
+
     public array $metodosPago = [];
+
     public string $nuevoMetodoPago = '';
+
     public bool $isOpenModalMetodo = false;
+
     public ?int $metodoPagoEditandoIndex = null;
+
+    // Propiedades para prueba de WhatsApp
+    public bool $isOpenModalWhatsapp = false;
+
+    public string $numeroWhatsapp = '';
+
+    public string $mensajeWhatsapp = '';
 
     /**
      * Mount the component.
@@ -36,6 +54,7 @@ class Empresa extends Component
     {
         return view('livewire.settings.empresa');
     }
+
     /**
      * Cargar las configuraciones desde la base de datos
      */
@@ -101,6 +120,7 @@ class Empresa extends Component
     {
         $logoContent = file_get_contents($this->logo->getRealPath());
         $mimeType = $this->logo->getMimeType();
+
         return 'data:' . $mimeType . ';base64,' . base64_encode($logoContent);
     }
 
@@ -153,7 +173,7 @@ class Empresa extends Component
     public function guardarMetodoPago(): void
     {
         $this->validate([
-            'nuevoMetodoPago' => ['required', 'string', 'max:100']
+            'nuevoMetodoPago' => ['required', 'string', 'max:100'],
         ]);
 
         if ($this->metodoPagoEditandoIndex !== null) {
@@ -161,7 +181,7 @@ class Empresa extends Component
             $this->metodosPago[$this->metodoPagoEditandoIndex] = $this->nuevoMetodoPago;
         } else {
             // Agregar nuevo método
-            if (!in_array($this->nuevoMetodoPago, $this->metodosPago)) {
+            if (! in_array($this->nuevoMetodoPago, $this->metodosPago)) {
                 $this->metodosPago[] = $this->nuevoMetodoPago;
             }
         }
@@ -190,5 +210,69 @@ class Empresa extends Component
         $this->isOpenModalMetodo = false;
         $this->nuevoMetodoPago = '';
         $this->metodoPagoEditandoIndex = null;
+    }
+
+    /**
+     * Abrir modal para prueba de WhatsApp
+     */
+    public function abrirModalWhatsapp(): void
+    {
+        $this->numeroWhatsapp = '';
+        $this->mensajeWhatsapp = 'Mensaje de prueba desde PEGASUS';
+        $this->isOpenModalWhatsapp = true;
+    }
+
+    /**
+     * Enviar mensaje de prueba por WhatsApp
+     */
+    public function enviarPruebaWhatsapp(): void
+    {
+        $this->validate([
+            'numeroWhatsapp' => ['required', 'string', 'min:9', 'max:15'],
+            'mensajeWhatsapp' => ['required', 'string', 'max:500'],
+        ]);
+
+        try {
+            $whatsappService = new WhatsAppService;
+
+            if (! $whatsappService->isConfigured()) {
+                $this->notification()->error(
+                    'Configuración incompleta',
+                    'El servicio de WhatsApp no está configurado correctamente. Verifique las credenciales en el archivo de configuración.'
+                );
+
+                return;
+            }
+
+            $enviado = $whatsappService->sendMessage($this->numeroWhatsapp, $this->mensajeWhatsapp);
+
+            if ($enviado) {
+                $this->notification()->success(
+                    'Mensaje enviado',
+                    'El mensaje de prueba se envió correctamente a ' . $this->numeroWhatsapp
+                );
+                $this->cerrarModalWhatsapp();
+            } else {
+                $this->notification()->error(
+                    'Error al enviar',
+                    'No se pudo enviar el mensaje. Verifique el número y la configuración del servicio.'
+                );
+            }
+        } catch (\Exception $e) {
+            $this->notification()->error(
+                'Error inesperado',
+                'Ocurrió un error al intentar enviar el mensaje: ' . $e->getMessage()
+            );
+        }
+    }
+
+    /**
+     * Cerrar modal de prueba de WhatsApp
+     */
+    public function cerrarModalWhatsapp(): void
+    {
+        $this->isOpenModalWhatsapp = false;
+        $this->numeroWhatsapp = '';
+        $this->mensajeWhatsapp = '';
     }
 }

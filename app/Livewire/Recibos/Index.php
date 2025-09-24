@@ -155,6 +155,23 @@ class Index extends Component
         $this->isOpenExportModal = true;
     }
 
+    public function toggleWhatsAppNotification(int $reciboId): void
+    {
+        $recibo = Recibo::find($reciboId);
+
+        if ($recibo && $recibo->estado_recibo === 'vencido') {
+            $recibo->update([
+                'enviado_whatsapp' => ! $recibo->enviado_whatsapp,
+            ]);
+
+            $estadoTexto = $recibo->enviado_whatsapp ? 'desactivadas' : 'activadas';
+            $this->notification()->success(
+                'Notificaciones WhatsApp',
+                "Las notificaciones de WhatsApp han sido {$estadoTexto} para el recibo {$recibo->numero_recibo}."
+            );
+        }
+    }
+
     public function marcarComoPagado(): void
     {
         $this->validate([
@@ -243,10 +260,10 @@ class Index extends Component
 
         // Crear nombre del archivo con timestamp
         $tipoDetalle = $this->exportFilters['tipo_detalle'] === 'detallado' ? '-detallado' : '';
-        $filename = 'recibos-export' . $tipoDetalle . '-' . now()->format('Y-m-d-H-i') . '.xlsx';
+        $filename = 'recibos-export'.$tipoDetalle.'-'.now()->format('Y-m-d-H-i').'.xlsx';
 
         // Cerrar modal
-        //$this->isOpenExportModal = false;
+        // $this->isOpenExportModal = false;
 
         // Elegir la clase de exportación según el tipo de detalle
         $exportClass = $this->exportFilters['tipo_detalle'] === 'detallado'
@@ -272,10 +289,10 @@ class Index extends Component
         // Aplicar filtro de búsqueda
         if ($this->search) {
             $query->where(function ($q) {
-                $q->where('numero_recibo', 'like', '%' . $this->search . '%')
-                    ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(data_cliente, '$.nombre_cliente')) LIKE ?", ['%' . $this->search . '%'])
-                    ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(data_cliente, '$.ruc_dni')) LIKE ?", ['%' . $this->search . '%'])
-                    ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(data_cobro, '$.placa')) LIKE ?", ['%' . $this->search . '%']);
+                $q->where('numero_recibo', 'like', '%'.$this->search.'%')
+                    ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(data_cliente, '$.nombre_cliente')) LIKE ?", ['%'.$this->search.'%'])
+                    ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(data_cliente, '$.ruc_dni')) LIKE ?", ['%'.$this->search.'%'])
+                    ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(data_cobro, '$.placa')) LIKE ?", ['%'.$this->search.'%']);
             });
         }
 

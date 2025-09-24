@@ -20,7 +20,7 @@
                 <!-- Page title -->
                 <div class="ml-4 lg:ml-0">
                     <h1 class="text-xl font-semibold text-gray-800 dark:text-gray-100">
-                        Pegasus GPS
+                        {{ $empresaConfig?->razon_social ?? config('app.name', 'PEGASUS') }}
                     </h1>
                 </div>
 

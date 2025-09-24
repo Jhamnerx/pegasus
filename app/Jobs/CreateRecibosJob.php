@@ -34,17 +34,19 @@ class CreateRecibosJob implements ShouldQueue
             $alertDays = explode(',', env('ALERT_DAYS', '7,3,1'));
             $diasAnticipacion = max(array_map('intval', $alertDays));
 
-            // Calcular fecha específica: placas que vencen exactamente en X días
-            $fechaObjetivo = Carbon::now()->addDays($diasAnticipacion)->toDateString();
+            // Calcular rango de fechas: desde hoy hasta el día máximo de anticipación
+            $fechaHoy = Carbon::now()->toDateString();
+            $fechaMaxima = Carbon::now()->addDays($diasAnticipacion)->toDateString();
 
-            Log::info("CreateRecibosJob: Buscando placas que vencen exactamente el {$fechaObjetivo} (en {$diasAnticipacion} días)");
+            Log::info("CreateRecibosJob: Buscando placas que vencen entre {$fechaHoy} y {$fechaMaxima} (hasta {$diasAnticipacion} días de anticipación)");
 
-            // Buscar placas que necesitan recibos
+            // Buscar placas que necesitan recibos - DENTRO DEL RANGO de días
             $placasVencen = CobroPlaca::with(['cobro.cliente', 'cobro.servicio'])
                 ->whereHas('cobro', function ($query) {
                     $query->where('estado', 'activo');
                 })
-                ->whereDate('fecha_fin', $fechaObjetivo)  // Solo placas que vencen en la fecha objetivo
+                ->whereDate('fecha_fin', '>=', $fechaHoy)     // Desde hoy
+                ->whereDate('fecha_fin', '<=', $fechaMaxima) // Hasta el día máximo
                 ->whereDoesntHave('recibos', function ($query) {
                     // Verificar que no exista un recibo_detalle para este período específico
                     $query->whereHas('recibo', function ($reciboQuery) {
@@ -55,15 +57,17 @@ class CreateRecibosJob implements ShouldQueue
                 })
                 ->get();
             if ($placasVencen->isEmpty()) {
-                Log::info("CreateRecibosJob: No hay placas que necesiten recibos en el período especificado");
+                Log::info('CreateRecibosJob: No hay placas que necesiten recibos en el rango de días especificado');
+
                 return false;
             }
 
-            Log::info("CreateRecibosJob: Placas encontradas que necesitan recibos: " . json_encode($placasVencen->pluck('placa')));
+            Log::info('CreateRecibosJob: Placas encontradas que necesitan recibos: ' . json_encode($placasVencen->pluck('placa')));
 
-            // Log de placas encontradas para debugging
+            // Log detallado de placas encontradas para debugging
             foreach ($placasVencen as $placa) {
-                Log::info("Placa {$placa->placa} del cobro {$placa->cobro_id} vence el {$placa->fecha_fin}");
+                $diasParaVencimiento = Carbon::parse($placa->fecha_fin)->diffInDays(Carbon::now());
+                Log::info("Placa {$placa->placa} del cobro {$placa->cobro_id} vence el {$placa->fecha_fin} (en {$diasParaVencimiento} días)");
             }
 
             // Agrupar placas por cobro
@@ -78,7 +82,7 @@ class CreateRecibosJob implements ShouldQueue
                     $recibosCreados++;
                     DB::commit();
 
-                    Log::info("Recibo creado para cobro {$cobroId} con " . $placas->count() . " placas");
+                    Log::info("Recibo creado para cobro {$cobroId} con " . $placas->count() . ' placas');
                 } catch (\Exception $e) {
                     DB::rollBack();
                     Log::error("Error creando recibo para cobro {$cobroId}: " . $e->getMessage());
@@ -86,9 +90,10 @@ class CreateRecibosJob implements ShouldQueue
             }
 
             Log::info("CreateRecibosJob completado. Recibos creados: {$recibosCreados}");
+
             return $recibosCreados > 0;
         } catch (\Exception $e) {
-            Log::error("Error en CreateRecibosJob: " . $e->getMessage());
+            Log::error('Error en CreateRecibosJob: ' . $e->getMessage());
             throw $e;
         }
     }
@@ -159,6 +164,10 @@ class CreateRecibosJob implements ShouldQueue
 
         $cobro->estado = 'procesado';
         $cobro->save();
+
+        // Cargar la relación cliente para el recibo antes de enviar
+        $recibo->load('cliente');
+
         // Enviar PDF por WhatsApp
         $this->enviarWhatsApp($recibo);
     }
@@ -170,6 +179,7 @@ class CreateRecibosJob implements ShouldQueue
     {
         $alertDays = explode(',', env('ALERT_DAYS', '7,3,1'));
         $maxDias = max(array_map('intval', $alertDays));
+
         return Carbon::now()->addDays($maxDias);
     }
 
@@ -181,14 +191,18 @@ class CreateRecibosJob implements ShouldQueue
         try {
             $whatsAppService = app('whatsapp');
 
-            if (!$whatsAppService->isConfigured()) {
+            if (! $whatsAppService->isConfigured()) {
                 Log::warning("WhatsApp no configurado para recibo: {$recibo->numero_recibo}");
+
                 return;
             }
 
-            $telefono = $recibo->data_cliente['telefono'] ?? null;
-            if (!$telefono) {
-                Log::warning("Sin teléfono para recibo: {$recibo->numero_recibo}");
+            // Obtener todos los teléfonos del cliente
+            $telefonos = $this->obtenerTelefonosCliente($recibo);
+
+            if (empty($telefonos)) {
+                Log::warning("Sin teléfonos para recibo: {$recibo->numero_recibo}");
+
                 return;
             }
 
@@ -198,27 +212,69 @@ class CreateRecibosJob implements ShouldQueue
             $urlPublica = $pdfUrl;
             $mensaje = $this->generarMensaje($recibo, $urlPublica);
 
-            // 1. Primero enviar el mensaje de texto
-            $mensajeEnviado = $whatsAppService->sendMessage($telefono, $mensaje);
+            $enviadoAlMenosUno = false;
 
-            if (!$mensajeEnviado) {
-                Log::error("Error enviando mensaje de texto para recibo: {$recibo->numero_recibo}");
-                return;
+            // Enviar a todos los teléfonos
+            foreach ($telefonos as $telefono) {
+                try {
+                    // 1. Primero enviar el mensaje de texto
+                    $mensajeEnviado = $whatsAppService->sendMessage($telefono, $mensaje);
+
+                    if (! $mensajeEnviado) {
+                        Log::warning("Error enviando mensaje de texto a {$telefono} para recibo: {$recibo->numero_recibo}");
+
+                        continue;
+                    }
+
+                    Log::info("Mensaje de texto enviado a {$telefono} para recibo: {$recibo->numero_recibo}");
+
+                    // 2. Luego enviar el PDF por separado
+                    $pdfEnviado = $whatsAppService->sendMedia($telefono, '📄 Recibo adjunto', $pdfUrl, 'pdf');
+
+                    if ($pdfEnviado) {
+                        Log::info("PDF enviado a {$telefono} por WhatsApp: {$recibo->numero_recibo}");
+                        $enviadoAlMenosUno = true;
+                    } else {
+                        Log::warning("Error enviando PDF a {$telefono}: {$recibo->numero_recibo}");
+                    }
+                } catch (\Exception $e) {
+                    Log::error("Excepción enviando a {$telefono}: " . $e->getMessage());
+                }
             }
 
-            Log::info("Mensaje de texto enviado para recibo: {$recibo->numero_recibo}");
-
-            // 2. Luego enviar el PDF por separado
-            $pdfEnviado = $whatsAppService->sendMedia($telefono, "📄 Recibo adjunto", $pdfUrl, 'pdf');
-
-            if ($pdfEnviado) {
-                Log::info("PDF enviado por WhatsApp: {$recibo->numero_recibo}");
-            } else {
-                Log::error("Error enviando PDF: {$recibo->numero_recibo}");
+            if ($enviadoAlMenosUno) {
+                Log::info("Recibo enviado exitosamente al menos a un número: {$recibo->numero_recibo}");
             }
         } catch (\Exception $e) {
             Log::error("Excepción WhatsApp para recibo {$recibo->numero_recibo}: " . $e->getMessage());
         }
+    }
+
+    /**
+     * Obtener todos los teléfonos del cliente para el recibo
+     */
+    private function obtenerTelefonosCliente(Recibo $recibo): array
+    {
+        $telefonos = [];
+
+        // Primero intentar del campo JSON del recibo
+        if (isset($recibo->data_cliente['telefono']) && ! empty($recibo->data_cliente['telefono'])) {
+            $telefonos[] = $recibo->data_cliente['telefono'];
+        }
+
+        // Luego del modelo Cliente si está disponible
+        if ($recibo->cliente && $recibo->cliente->tieneTelefono()) {
+            $telefonosCliente = $recibo->cliente->telefonos;
+
+            // Agregar solo los teléfonos que no estén ya en el array
+            foreach ($telefonosCliente as $telefono) {
+                if (! in_array($telefono, $telefonos)) {
+                    $telefonos[] = $telefono;
+                }
+            }
+        }
+
+        return array_filter($telefonos); // Remover valores vacíos
     }
 
     /**
@@ -229,7 +285,7 @@ class CreateRecibosJob implements ShouldQueue
         // Obtener plantilla desde la base de datos
         $plantilla = \App\Models\PlantillaMensaje::porTipo('creacion_recibo');
 
-        if (!$plantilla) {
+        if (! $plantilla) {
             // Fallback al mensaje original si no existe plantilla
             $cliente = $recibo->data_cliente['nombre_cliente'] ?? 'Cliente';
             $servicio = $recibo->data_servicio['nombre'] ?? 'Servicio GPS';
@@ -249,7 +305,7 @@ class CreateRecibosJob implements ShouldQueue
             $mensaje .= "\n📎 PDF adjunto.\n";
             $mensaje .= "🔗 *Ver recibo online:* {$urlPublica}\n\n";
             $mensaje .= "📞 *PEGASUS S.A.C.*\n";
-            $mensaje .= "_Mensaje automático_";
+            $mensaje .= '_Mensaje automático_';
 
             return $mensaje;
         }
@@ -296,6 +352,6 @@ class CreateRecibosJob implements ShouldQueue
             $nuevoNumero = 1;
         }
 
-        return sprintf("%s-%s%s%06d", $prefix, $year, $month, $nuevoNumero);
+        return sprintf('%s-%s%s%06d', $prefix, $year, $month, $nuevoNumero);
     }
 }

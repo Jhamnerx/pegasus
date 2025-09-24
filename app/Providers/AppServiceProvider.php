@@ -24,8 +24,9 @@ class AppServiceProvider extends ServiceProvider
         // Registrar View Composer para configuración de empresa
         View::composer([
             'components.app.sidebar',
+            'components.app.header',
             'livewire.auth.login',
-            'layouts.guest'
+            'layouts.guest',
         ], ConfiguracionViewComposer::class);
     }
 }

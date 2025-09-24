@@ -17,6 +17,9 @@ class Cliente extends Model
         'nombre_cliente',
         'ruc_dni',
         'telefono',
+        'telefono_1',
+        'telefono_2',
+        'telefono_3',
         'correo_electronico',
         'direccion',
         'estado',
@@ -50,5 +53,34 @@ class Cliente extends Model
     public function scopeInactivos($query)
     {
         return $query->where('estado', 'Inactivo');
+    }
+
+    /**
+     * Obtener todos los teléfonos del cliente (sin valores nulos)
+     */
+    public function getTelefonosAttribute(): array
+    {
+        return collect([
+            $this->telefono,
+            $this->telefono_1,
+            $this->telefono_2,
+            $this->telefono_3,
+        ])->filter()->values()->toArray();
+    }
+
+    /**
+     * Obtener el teléfono principal (el primer teléfono disponible)
+     */
+    public function getTelefonoPrincipalAttribute(): ?string
+    {
+        return $this->telefono ?: $this->telefono_1 ?: $this->telefono_2 ?: $this->telefono_3;
+    }
+
+    /**
+     * Verificar si el cliente tiene al menos un teléfono registrado
+     */
+    public function tieneTelefono(): bool
+    {
+        return ! empty($this->telefonos);
     }
 }

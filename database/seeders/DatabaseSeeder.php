@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             UsersSeeder::class,
             ServiciosSeeder::class,
             ClientesSeeder::class,
+            PlantillaMensajeSeeder::class,
         ]);
     }
 }

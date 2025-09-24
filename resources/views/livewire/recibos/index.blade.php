@@ -121,6 +121,9 @@
                                 <div class="font-semibold text-center">Estado</div>
                             </th>
                             <th class="p-2 whitespace-nowrap">
+                                <div class="font-semibold text-center">WhatsApp</div>
+                            </th>
+                            <th class="p-2 whitespace-nowrap">
                                 <div class="font-semibold text-center">Acciones</div>
                             </th>
                         </tr>
@@ -184,6 +187,18 @@
                                             <x-badge secondary label="{{ ucfirst($recibo->estado_recibo) }}" />
                                     @endswitch
                                 </td>
+
+                                <!-- WhatsApp Toggle -->
+                                <td class="p-2 whitespace-nowrap text-center">
+                                    @if ($recibo->estado_recibo === 'vencido')
+                                        <x-toggle wire:change="toggleWhatsAppNotification({{ $recibo->id }})"
+                                            :checked="!$recibo->enviado_whatsapp" md
+                                            title="{{ $recibo->enviado_whatsapp ? 'Notificaciones desactivadas' : 'Notificaciones activadas' }}" />
+                                    @else
+                                        <span class="text-gray-400">-</span>
+                                    @endif
+                                </td>
+
                                 <!-- Acciones -->
                                 <td class="p-2 whitespace-nowrap text-center">
                                     <div class="flex items-center justify-center space-x-2">
