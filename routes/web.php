@@ -22,6 +22,7 @@ Route::prefix('install')->group(function () {
 });
 
 Route::get('recibo/{uuid}', [PublicReciboController::class, 'pdf'])->name('public.recibo.pdf');
+Route::get('recibo/download/{uuid}', [PublicReciboController::class, 'download'])->name('public.recibo.download');
 
 Route::middleware(['auth'])->group(function () {
     // Settings routes

@@ -35,6 +35,28 @@ class PublicReciboController extends Controller
     }
 
     /**
+     * Descargar automáticamente el PDF del recibo para APIs/WhatsApp
+     */
+    public function download(string $uuid)
+    {
+        $recibo = Recibo::where('uuid', $uuid)
+            ->with(['detalles'])
+            ->firstOrFail();
+
+        // Obtener configuración de empresa desde la base de datos
+        $empresaConfig = $this->obtenerConfiguracionEmpresa();
+
+        // Generar el PDF
+        $pdf = Pdf::loadView('pdf.recibo', compact('recibo', 'empresaConfig'));
+
+        // Configurar el PDF
+        $pdf->setPaper('a4', 'portrait');
+
+        // Forzar descarga automática del archivo
+        return $pdf->download('recibo-' . $recibo->numero_recibo . '.pdf');
+    }
+
+    /**
      * Obtener configuración de empresa
      */
     private function obtenerConfiguracionEmpresa(): array

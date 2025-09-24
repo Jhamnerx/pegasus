@@ -207,8 +207,9 @@ class CreateRecibosJob implements ShouldQueue
             }
 
             $pdfUrl = $whatsAppService->generatePdfUrl($recibo->uuid);
+            $pdfDownloadUrl = $whatsAppService->generatePdfDownloadUrl($recibo->uuid);
 
-            // Generar URL pública del recibo usando UUID
+            // Generar URL pública del recibo usando UUID (para visualizar)
             $urlPublica = $pdfUrl;
             $mensaje = $this->generarMensaje($recibo, $urlPublica);
 
@@ -228,8 +229,8 @@ class CreateRecibosJob implements ShouldQueue
 
                     Log::info("Mensaje de texto enviado a {$telefono} para recibo: {$recibo->numero_recibo}");
 
-                    // 2. Luego enviar el PDF por separado
-                    $pdfEnviado = $whatsAppService->sendMedia($telefono, '📄 Recibo adjunto', $pdfUrl, 'pdf');
+                    // 2. Luego enviar el PDF por separado usando la URL de descarga
+                    $pdfEnviado = $whatsAppService->sendMedia($telefono, '📄 Recibo adjunto', $pdfDownloadUrl, 'pdf');
 
                     if ($pdfEnviado) {
                         Log::info("PDF enviado a {$telefono} por WhatsApp: {$recibo->numero_recibo}");

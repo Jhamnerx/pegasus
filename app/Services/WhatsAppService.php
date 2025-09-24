@@ -124,10 +124,18 @@ class WhatsAppService
     }
 
     /**
-     * Generar URL pública del PDF para el recibo usando UUID
+     * Generar URL pública del PDF para el recibo usando UUID (para visualizar)
      */
     public function generatePdfUrl(string $reciboUuid): string
     {
         return config('app.url') . "/recibo/{$reciboUuid}";
+    }
+
+    /**
+     * Generar URL de descarga directa del PDF para APIs/WhatsApp
+     */
+    public function generatePdfDownloadUrl(string $reciboUuid): string
+    {
+        return config('app.url') . "/recibo/download/{$reciboUuid}";
     }
 }
