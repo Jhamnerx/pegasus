@@ -1,10 +1,107 @@
 // import "./bootstrap";
 
 // Import Chart.js
-// import { Chart } from "chart.js";
+import {
+    Chart,
+    ArcElement,
+    BarElement,
+    CategoryScale,
+    LinearScale,
+    LineElement,
+    PointElement,
+    DoughnutController,
+    BarController,
+    LineController,
+    Legend,
+    Tooltip,
+    Title,
+    Filler,
+} from "chart.js";
+
+// Register Chart.js components
+Chart.register(
+    ArcElement,
+    BarElement,
+    CategoryScale,
+    LinearScale,
+    LineElement,
+    PointElement,
+    DoughnutController,
+    BarController,
+    LineController,
+    Legend,
+    Tooltip,
+    Title,
+    Filler
+);
+
+// Make Chart available globally for Livewire scripts
+window.Chart = Chart;
+
+// Import reports charts
+import "./reports/charts.js";
 
 // Import flatpickr
 // import flatpickr from "flatpickr";
+// Define Chart.js default settings
+/* eslint-disable prefer-destructuring */
+Chart.defaults.font.family = '"Inter", sans-serif';
+Chart.defaults.font.weight = 500;
+Chart.defaults.plugins.tooltip.borderWidth = 1;
+Chart.defaults.plugins.tooltip.displayColors = false;
+Chart.defaults.plugins.tooltip.mode = "nearest";
+Chart.defaults.plugins.tooltip.intersect = false;
+Chart.defaults.plugins.tooltip.position = "nearest";
+Chart.defaults.plugins.tooltip.caretSize = 0;
+Chart.defaults.plugins.tooltip.caretPadding = 20;
+Chart.defaults.plugins.tooltip.cornerRadius = 8;
+Chart.defaults.plugins.tooltip.padding = 8;
+
+// Function that generates a gradient for line charts
+export const chartAreaGradient = (ctx, chartArea, colorStops) => {
+    if (!ctx || !chartArea || !colorStops || colorStops.length === 0) {
+        return "transparent";
+    }
+    const gradient = ctx.createLinearGradient(
+        0,
+        chartArea.bottom,
+        0,
+        chartArea.top
+    );
+    colorStops.forEach(({ stop, color }) => {
+        // Convert OKLCH to RGBA if needed
+        const finalColor = color.startsWith("oklch")
+            ? oklchToRGBA(color)
+            : color;
+        gradient.addColorStop(stop, finalColor);
+    });
+    return gradient;
+};
+
+// Register Chart.js plugin to add a bg option for chart area
+Chart.register({
+    id: "chartAreaPlugin",
+    // eslint-disable-next-line object-shorthand
+    beforeDraw: (chart) => {
+        if (
+            chart.config.options.chartArea &&
+            chart.config.options.chartArea.backgroundColor
+        ) {
+            const ctx = chart.canvas.getContext("2d");
+            const { chartArea } = chart;
+            ctx.save();
+            ctx.fillStyle = chart.config.options.chartArea.backgroundColor;
+            // eslint-disable-next-line max-len
+            ctx.fillRect(
+                chartArea.left,
+                chartArea.top,
+                chartArea.right - chartArea.left,
+                chartArea.bottom - chartArea.top
+            );
+            ctx.restore();
+        }
+    },
+});
 
 document.addEventListener("DOMContentLoaded", () => {
     // Light switcher
