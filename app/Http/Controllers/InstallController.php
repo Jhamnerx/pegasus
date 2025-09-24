@@ -460,7 +460,8 @@ class InstallController extends Controller
     private function regenerateConfigCache(): array
     {
         try {
-            Artisan::call('config:cache');
+            Artisan::call('config:clear');
+            Artisan::call('cache:clear');
             $output = Artisan::output();
 
             return [
