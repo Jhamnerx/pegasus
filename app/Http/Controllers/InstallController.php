@@ -506,7 +506,9 @@ class InstallController extends Controller
      */
     public function queueClear()
     {
+        Artisan::call('queue:restart');
         try {
+            Artisan::call('queue:restart');
             Artisan::call('queue:clear');
             $output = Artisan::output();
 
