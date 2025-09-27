@@ -37,7 +37,6 @@ class NotifyRecibosVencidosJob implements ShouldQueue
                 ->whereNotNull('data_cliente')
                 ->get()
                 ->filter(function ($recibo) {
-                    // Verificar que tenga al menos un teléfono (en data_cliente o en el cliente)
                     $telefonoDataCliente = $recibo->data_cliente['telefono'] ?? null;
                     $cliente = $recibo->cliente;
 
@@ -63,7 +62,6 @@ class NotifyRecibosVencidosJob implements ShouldQueue
                 }
             }
 
-            // Actualizar estado de recibos que aún están como pendientes pero ya vencieron
             $this->actualizarRecibosVencidos();
 
             Log::info("NotifyRecibosVencidosJob completado. Notificaciones de vencidos enviadas: {$notificacionesEnviadas}");

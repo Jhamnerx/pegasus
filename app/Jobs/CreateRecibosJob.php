@@ -109,9 +109,9 @@ class CreateRecibosJob implements ShouldQueue
             'cobro_id' => $cobro->id,
             'cliente_id' => $cobro->cliente_id,
             'servicio_id' => $cobro->servicio_id,
-            'monto_recibo' => 0, // Se calculará después
+            'monto_recibo' => 0,
             'fecha_emision' => Carbon::now()->toDateString(),
-            'fecha_vencimiento' => Carbon::now()->addDays($cobro->dias_para_vencimiento)->toDateString(),
+            'fecha_vencimiento' => $placas->max('fecha_fin'),
             'estado_recibo' => 'pendiente',
             'cantidad_placas' => $placas->count(),
             'moneda' => $cobro->moneda ?? 'PEN',
