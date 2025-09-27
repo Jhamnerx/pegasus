@@ -163,6 +163,7 @@ class CreateRecibosJob implements ShouldQueue
         $recibo->update(['monto_recibo' => $montoTotal]);
 
         $cobro->estado = 'procesado';
+        $cobro->fecha_procesamiento = Carbon::now()->toDateString();
         $cobro->save();
 
         // Cargar la relación cliente para el recibo antes de enviar
