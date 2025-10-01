@@ -208,7 +208,7 @@
                                         <a href="{{ route('recibos.pdf', $recibo) }}" target="_blank" title="Ver PDF">
                                             <x-mini-button rounded info icon="document" />
                                         </a>
-                                        @if ($recibo->estado_recibo === 'pendiente')
+                                        @if ($recibo->estado_recibo === 'pendiente' || $recibo->estado_recibo === 'vencido')
                                             <x-mini-button rounded positive icon="check-circle"
                                                 wire:click="abrirModalPago({{ $recibo->id }})"
                                                 title="Marcar como pagado" />
