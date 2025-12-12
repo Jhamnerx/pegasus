@@ -277,6 +277,7 @@ else
         echo ""
         if mysql -u root -p"${CURRENT_MYSQL_PASSWORD}" -e "SELECT 1;" 2>/dev/null; then
             MYSQL_ROOT_PASSWORD="$CURRENT_MYSQL_PASSWORD"
+            DB_PASSWORD="$CURRENT_MYSQL_PASSWORD"  # Actualizar DB_PASSWORD también
             MYSQL_CONFIGURED=true
             print_success "Conectado con contraseña existente"
         else
