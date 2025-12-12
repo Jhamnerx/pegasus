@@ -289,15 +289,28 @@ print_success "Apache instalado"
 # 11. COPIAR REPOSITORIO AL DIRECTORIO FINAL
 ################################################################################
 
-print_info "Copiando repositorio a $INSTALL_DIR..."
-if [[ -d "$INSTALL_DIR" ]]; then
-    rm -rf "$INSTALL_DIR"
+# Verificar si ya estamos en el directorio de instalación
+if [[ "$CURRENT_DIR" == "$INSTALL_DIR" ]]; then
+    print_info "El repositorio ya está en $INSTALL_DIR"
+    print_success "Usando repositorio existente"
+else
+    print_info "Copiando repositorio a $INSTALL_DIR..."
+    
+    # Crear directorio padre si no existe
+    mkdir -p "$(dirname "$INSTALL_DIR")"
+    
+    # Si el directorio destino existe, hacer backup
+    if [[ -d "$INSTALL_DIR" ]]; then
+        print_warning "Directorio $INSTALL_DIR existe, creando backup..."
+        mv "$INSTALL_DIR" "${INSTALL_DIR}.backup.$(date +%Y%m%d_%H%M%S)"
+    fi
+    
+    # Copiar todo el directorio actual al destino
+    cp -r "$CURRENT_DIR" "$INSTALL_DIR"
+    print_success "Repositorio copiado"
 fi
 
-# Copiar todo el directorio actual al destino
-cp -r "$CURRENT_DIR" "$INSTALL_DIR"
 cd "$INSTALL_DIR"
-print_success "Repositorio copiado"
 
 ################################################################################
 # 12. INSTALAR DEPENDENCIAS DEL PROYECTO
