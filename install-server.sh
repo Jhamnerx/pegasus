@@ -154,6 +154,7 @@ dnf install -y \
     wget \
     git \
     unzip \
+    tar \
     vim \
     policycoreutils-python-utils
 
