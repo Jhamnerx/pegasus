@@ -137,7 +137,7 @@ PHPMYADMIN_SECRET=$(generate_password)
 ################################################################################
 
 print_info "Actualizando sistema..."
-dnf update -y -q > /dev/null 2>&1
+dnf update -y
 print_success "Sistema actualizado"
 
 ################################################################################
@@ -145,7 +145,7 @@ print_success "Sistema actualizado"
 ################################################################################
 
 print_info "Instalando dependencias básicas..."
-dnf install -y -q \
+dnf install -y \
     epel-release \
     dnf-plugins-core \
     curl \
@@ -154,14 +154,14 @@ dnf install -y -q \
     unzip \
     vim \
     htop \
-    policycoreutils-python-utils \
-    > /dev/null 2>&1
+    policycoreutils-python-utils
+
 print_success "Dependencias básicas instaladas"
 
 # Habilitar CodeReady Builder (necesario para algunas dependencias)
 print_info "Habilitando CodeReady Builder..."
-dnf config-manager --set-enabled crb -y > /dev/null 2>&1 || \
-    dnf config-manager --set-enabled powertools -y > /dev/null 2>&1
+dnf config-manager --set-enabled crb -y || \
+    dnf config-manager --set-enabled powertools -y
 print_success "CodeReady Builder habilitado"
 
 ################################################################################
@@ -169,8 +169,8 @@ print_success "CodeReady Builder habilitado"
 ################################################################################
 
 print_info "Instalando repositorio Remi..."
-dnf install -y -q https://rpms.remirepo.net/enterprise/remi-release-9.rpm > /dev/null 2>&1
-dnf config-manager --set-enabled remi -y > /dev/null 2>&1
+dnf install -y https://rpms.remirepo.net/enterprise/remi-release-9.rpm
+dnf config-manager --set-enabled remi -y
 print_success "Repositorio Remi instalado"
 
 ################################################################################
@@ -178,10 +178,10 @@ print_success "Repositorio Remi instalado"
 ################################################################################
 
 print_info "Instalando PHP 8.3 y extensiones..."
-dnf module reset php -y -q > /dev/null 2>&1
-dnf module install -y -q php:remi-8.3 > /dev/null 2>&1
+dnf module reset php -y
+dnf module install -y php:remi-8.3
 
-dnf install -y -q \
+dnf install -y \
     php \
     php-cli \
     php-fpm \
@@ -200,8 +200,7 @@ dnf install -y -q \
     php-opcache \
     php-json \
     php-process \
-    php-pdo \
-    > /dev/null 2>&1
+    php-pdo
 
 # Configurar PHP
 print_info "Configurando PHP..."
@@ -218,7 +217,7 @@ print_success "PHP 8.3 instalado y configurado"
 ################################################################################
 
 print_info "Instalando Composer..."
-curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer > /dev/null 2>&1
+curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 chmod +x /usr/local/bin/composer
 print_success "Composer instalado: $(composer --version | head -n1)"
 
@@ -227,9 +226,9 @@ print_success "Composer instalado: $(composer --version | head -n1)"
 ################################################################################
 
 print_info "Instalando Node.js 20.x y NPM..."
-curl -fsSL https://rpm.nodesource.com/setup_20.x | bash - > /dev/null 2>&1
-dnf install -y -q nodejs > /dev/null 2>&1
-npm install -g npm@latest > /dev/null 2>&1
+curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
+dnf install -y nodejs
+npm install -g npm@latest
 print_success "Node.js $(node --version) y NPM $(npm --version) instalados"
 
 ################################################################################
@@ -237,12 +236,12 @@ print_success "Node.js $(node --version) y NPM $(npm --version) instalados"
 ################################################################################
 
 print_info "Instalando MySQL 8.0..."
-dnf install -y -q mysql-server > /dev/null 2>&1
+dnf install -y mysql-server
 
 # Configurar MySQL de forma segura
 print_info "Configurando MySQL..."
 systemctl start mysqld
-systemctl enable mysqld > /dev/null 2>&1
+systemctl enable mysqld
 
 # Configurar contraseña root
 mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${MYSQL_ROOT_PASSWORD}';" 2>/dev/null || true
@@ -267,8 +266,8 @@ print_success "MySQL configurado y base de datos creada"
 ################################################################################
 
 print_info "Instalando Redis..."
-dnf install -y -q redis > /dev/null 2>&1
-systemctl enable redis > /dev/null 2>&1
+dnf install -y redis
+systemctl enable redis
 systemctl start redis
 print_success "Redis instalado y ejecutándose"
 
@@ -277,9 +276,9 @@ print_success "Redis instalado y ejecutándose"
 ################################################################################
 
 print_info "Instalando Apache (httpd)..."
-dnf install -y -q httpd mod_ssl > /dev/null 2>&1
+dnf install -y httpd mod_ssl
 
-systemctl enable httpd > /dev/null 2>&1
+systemctl enable httpd
 print_success "Apache instalado"
 
 ################################################################################
@@ -300,16 +299,16 @@ print_success "Repositorio copiado"
 # 12. INSTALAR DEPENDENCIAS DEL PROYECTO
 ################################################################################
 
-print_info "Instalando dependencias de Composer..."
-composer install --no-dev --optimize-autoloader --no-interaction > /dev/null 2>&1
+print_info "Instalando dependencias de Composer (esto puede tomar varios minutos)..."
+composer install --no-dev --optimize-autoloader --no-interaction
 print_success "Dependencias de Composer instaladas"
 
-print_info "Instalando dependencias de NPM..."
-npm install > /dev/null 2>&1
+print_info "Instalando dependencias de NPM (esto puede tomar varios minutos)..."
+npm install
 print_success "Dependencias de NPM instaladas"
 
 print_info "Compilando assets..."
-npm run build > /dev/null 2>&1
+npm run build
 print_success "Assets compilados"
 
 ################################################################################
@@ -381,20 +380,23 @@ EOF
 
 # Ejecutar migraciones
 print_info "Ejecutando migraciones..."
-php artisan migrate --force > /dev/null 2>&1
+php artisan migrate --force
 
 # Ejecutar seeders si existen
 if [[ -f database/seeders/DatabaseSeeder.php ]]; then
-    php artisan db:seed --force > /dev/null 2>&1 || true
+    print_info "Ejecutando seeders..."
+    php artisan db:seed --force || true
 fi
 
 # Optimizar Laravel
-php artisan config:cache > /dev/null 2>&1
-php artisan route:cache > /dev/null 2>&1
-php artisan view:cache > /dev/null 2>&1
+print_info "Optimizando Laravel..."
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
 
 # Establecer permisos
-chown -R www-data:www-data "$INSTALL_DIR"
+print_info "Configurando permisos..."
+chown -R apache:apache "$INSTALL_DIR"
 chmod -R 755 "$INSTALL_DIR"
 chmod -R 775 "$INSTALL_DIR/storage"
 chmod -R 775 "$INSTALL_DIR/bootstrap/cache"
@@ -444,10 +446,10 @@ print_success "VirtualHost configurado"
 ################################################################################
 
 print_info "Instalando y configurando Supervisor..."
-apt-get install -y -qq supervisor > /dev/null 2>&1
+dnf install -y supervisor
 
 # Configuración para Laravel Queue Worker
-cat > "/etc/supervisor/conf.d/${PROJECT_NAME}-worker.conf" <<EOF
+cat > "/etc/supervisord.d/${PROJECT_NAME}-worker.ini" <<EOF
 [program:${PROJECT_NAME}-worker]
 process_name=%(program_name)s_%(process_num)02d
 command=php ${INSTALL_DIR}/artisan queue:work redis --sleep=3 --tries=3 --max-time=3600 --timeout=300
@@ -455,7 +457,7 @@ autostart=true
 autorestart=true
 stopasgroup=true
 killasgroup=true
-user=www-data
+user=apache
 numprocs=2
 redirect_stderr=true
 stdout_logfile=${INSTALL_DIR}/storage/logs/worker.log
@@ -463,7 +465,7 @@ stopwaitsecs=3600
 EOF
 
 # Configuración para Laravel Scheduler
-cat > "/etc/supervisor/conf.d/${PROJECT_NAME}-scheduler.conf" <<EOF
+cat > "/etc/supervisord.d/${PROJECT_NAME}-scheduler.ini" <<EOF
 [program:${PROJECT_NAME}-scheduler]
 process_name=%(program_name)s
 command=/bin/sh -c "while [ true ]; do (php ${INSTALL_DIR}/artisan schedule:run --verbose --no-interaction &); sleep 60; done"
@@ -471,17 +473,17 @@ autostart=true
 autorestart=true
 stopasgroup=true
 killasgroup=true
-user=www-data
+user=apache
 numprocs=1
 redirect_stderr=true
 stdout_logfile=${INSTALL_DIR}/storage/logs/scheduler.log
 EOF
 
-systemctl enable supervisor > /dev/null 2>&1
-systemctl restart supervisor
-supervisorctl reread > /dev/null 2>&1
-supervisorctl update > /dev/null 2>&1
-supervisorctl start all > /dev/null 2>&1
+systemctl enable supervisord
+systemctl restart supervisord
+supervisorctl reread
+supervisorctl update
+supervisorctl start all
 
 print_success "Supervisor configurado y ejecutándose"
 
@@ -551,7 +553,7 @@ print_success "phpMyAdmin instalado en: https://${DOMAIN}${PHPMYADMIN_ALIAS}"
 
 # Instalar Certbot para AlmaLinux
 print_info "Instalando Certbot..."
-dnf install -y -q certbot python3-certbot-apache > /dev/null 2>&1
+dnf install -y certbot python3-certbot-apache
 print_success "Certbot instalado"
 
 if [[ "$CONFIGURE_SSL" == "y" || "$CONFIGURE_SSL" == "Y" ]]; then
@@ -599,12 +601,12 @@ print_success "SELinux configurado"
 
 print_info "Configurando firewall FirewallD..."
 systemctl start firewalld
-systemctl enable firewalld > /dev/null 2>&1
+systemctl enable firewalld
 
-firewall-cmd --permanent --add-service=http > /dev/null 2>&1
-firewall-cmd --permanent --add-service=https > /dev/null 2>&1
-firewall-cmd --permanent --add-service=ssh > /dev/null 2>&1
-firewall-cmd --reload > /dev/null 2>&1
+firewall-cmd --permanent --add-service=http
+firewall-cmd --permanent --add-service=https
+firewall-cmd --permanent --add-service=ssh
+firewall-cmd --reload
 
 print_success "Firewall configurado"
 
