@@ -24,8 +24,8 @@ Route::middleware('auth')->group(function () {
         ->middleware(['signed', 'throttle:6,1'])
         ->name('verification.verify');
 
-    Route::get('confirm-password', ConfirmPassword::class)
-        ->name('password.confirm');
+    // Route::get('confirm-password', ConfirmPassword::class)
+    //     ->name('password.confirm');
 });
 
 Route::post('logout', App\Livewire\Actions\Logout::class)
