@@ -128,9 +128,9 @@ fi
 
 # Generar contraseñas
 MYSQL_ROOT_PASSWORD=$(generate_password)
-DB_NAME="${PROJECT_NAME}_production"
-DB_USER="${PROJECT_NAME}_user"
-DB_PASSWORD=$(generate_password)
+DB_NAME="pegasus"
+DB_USER="root"
+DB_PASSWORD="${MYSQL_ROOT_PASSWORD}"  # Misma contraseña para root
 PHPMYADMIN_SECRET=$(generate_password)
 
 # 2. ACTUALIZAR SISTEMA
@@ -289,11 +289,9 @@ else
 fi
 
 # Crear base de datos y usuario
-print_info "Creando base de datos y usuario..."
+print_info "Creando base de datos..."
 mysql -u root -p"${MYSQL_ROOT_PASSWORD}" <<EOF
 CREATE DATABASE IF NOT EXISTS ${DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASSWORD}';
-GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'localhost';
 FLUSH PRIVILEGES;
 EOF
 
@@ -705,20 +703,19 @@ MYSQL
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Host:           localhost
 Puerto:         3306
-Usuario Root:   root
-Password Root:  ${MYSQL_ROOT_PASSWORD}
-
+Usuario:        root
+Password:       ${MYSQL_ROOT_PASSWORD}
 Base de Datos:  ${DB_NAME}
-Usuario DB:     ${DB_USER}
-Password DB:    ${DB_PASSWORD}
+
+NOTA: Se usa el usuario root para la aplicación y phpMyAdmin
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 PHPMYADMIN
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 URL:            https://${DOMAIN}${PHPMYADMIN_ALIAS}
-Usuario:        root  o  ${DB_USER}
-Password:       Ver passwords de MySQL arriba
+Usuario:        root
+Password:       ${MYSQL_ROOT_PASSWORD}
 
 NOTA: Solo accesible desde IPs autorizadas (configurar en /etc/apache2/conf-available/phpmyadmin.conf)
 
