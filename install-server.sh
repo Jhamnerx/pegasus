@@ -350,16 +350,33 @@ cd "$INSTALL_DIR"
 # 12. INSTALAR DEPENDENCIAS DEL PROYECTO
 ################################################################################
 
+# Verificar que composer esté disponible
+print_info "Verificando Composer..."
+if ! command -v composer &> /dev/null; then
+    print_warning "Composer no encontrado en PATH, buscando..."
+    if [[ -f /usr/local/bin/composer ]]; then
+        export PATH="/usr/local/bin:$PATH"
+        hash -r  # Rehash del PATH
+        print_success "Composer encontrado en /usr/local/bin"
+    else
+        print_error "Composer no está instalado. Instalando ahora..."
+        curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+        chmod +x /usr/local/bin/composer
+        export PATH="/usr/local/bin:$PATH"
+        hash -r
+    fi
+fi
+
 print_info "Instalando dependencias de Composer (esto puede tomar varios minutos)..."
-composer install --no-dev --optimize-autoloader --no-interaction
+/usr/local/bin/composer install --no-dev --optimize-autoloader --no-interaction
 print_success "Dependencias de Composer instaladas"
 
 print_info "Instalando dependencias de NPM (esto puede tomar varios minutos)..."
-npm install
+/usr/bin/npm install
 print_success "Dependencias de NPM instaladas"
 
 print_info "Compilando assets..."
-npm run build
+/usr/bin/npm run build
 print_success "Assets compilados"
 
 ################################################################################
