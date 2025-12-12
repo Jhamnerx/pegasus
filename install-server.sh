@@ -144,17 +144,21 @@ print_success "Sistema actualizado"
 # 3. INSTALAR DEPENDENCIAS BÁSICAS Y REPOSITORIOS
 ################################################################################
 
+print_info "Instalando EPEL release..."
+dnf install -y epel-release
+
 print_info "Instalando dependencias básicas..."
 dnf install -y \
-    epel-release \
     dnf-plugins-core \
     curl \
     wget \
     git \
     unzip \
     vim \
-    htop \
     policycoreutils-python-utils
+
+# Instalar htop desde EPEL (opcional)
+dnf install -y htop 2>/dev/null || print_warning "htop no disponible, continuando..."
 
 print_success "Dependencias básicas instaladas"
 
