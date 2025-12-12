@@ -657,9 +657,17 @@ print_info "Configurando SELinux..."
 setsebool -P httpd_can_network_connect 1
 setsebool -P httpd_can_network_connect_db 1
 
-# Configurar contextos de SELinux para Laravel
-chcon -R -t httpd_sys_rw_content_t ${INSTALL_DIR}/storage
-chcon -R -t httpd_sys_rw_content_t ${INSTALL_DIR}/bootstrap/cache
+# Configurar contextos de SELinux para Laravel de forma permanente
+print_info "Estableciendo contextos SELinux permanentes..."
+semanage fcontext -a -t httpd_sys_rw_content_t "${INSTALL_DIR}/storage(/.*)?" 2>/dev/null || \
+    semanage fcontext -m -t httpd_sys_rw_content_t "${INSTALL_DIR}/storage(/.*)?"
+semanage fcontext -a -t httpd_sys_rw_content_t "${INSTALL_DIR}/bootstrap/cache(/.*)?" 2>/dev/null || \
+    semanage fcontext -m -t httpd_sys_rw_content_t "${INSTALL_DIR}/bootstrap/cache(/.*)?"
+
+# Aplicar contextos
+print_info "Aplicando contextos SELinux..."
+restorecon -Rv ${INSTALL_DIR}/storage 2>/dev/null || chcon -R -t httpd_sys_rw_content_t ${INSTALL_DIR}/storage
+restorecon -Rv ${INSTALL_DIR}/bootstrap/cache 2>/dev/null || chcon -R -t httpd_sys_rw_content_t ${INSTALL_DIR}/bootstrap/cache
 
 print_success "SELinux configurado"
 
