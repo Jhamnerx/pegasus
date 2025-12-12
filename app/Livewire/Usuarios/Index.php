@@ -3,15 +3,15 @@
 namespace App\Livewire\Usuarios;
 
 use App\Models\User;
-use Livewire\Component;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
-use Livewire\WithPagination;
+use Livewire\Component;
 use Livewire\WithoutUrlPagination;
+use Livewire\WithPagination;
 
 class Index extends Component
 {
-    use WithPagination, WithoutUrlPagination;
+    use WithoutUrlPagination, WithPagination;
 
     #[Url]
     public $search = '';
@@ -64,11 +64,11 @@ class Index extends Component
     {
         $usuarios = User::with('rol')
             ->when($this->search, function ($query) {
-                $query->where('name', 'like', '%' . $this->search . '%')
-                    ->orWhere('email', 'like', '%' . $this->search . '%')
-                    ->orWhere('username', 'like', '%' . $this->search . '%')
+                $query->where('name', 'like', '%'.$this->search.'%')
+                    ->orWhere('email', 'like', '%'.$this->search.'%')
+                    ->orWhere('username', 'like', '%'.$this->search.'%')
                     ->orWhereHas('rol', function ($rolQuery) {
-                        $rolQuery->where('nombre_rol', 'like', '%' . $this->search . '%');
+                        $rolQuery->where('nombre_rol', 'like', '%'.$this->search.'%');
                     });
             })
             ->orderBy('created_at', 'desc')

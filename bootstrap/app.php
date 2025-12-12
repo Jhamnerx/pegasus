@@ -1,9 +1,9 @@
 <?php
 
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use Illuminate\Console\Scheduling\Schedule;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -23,8 +23,14 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withSchedule(function (Schedule $schedule) {
+        // Renovar placas vencidas a las 8:00 AM (ANTES de crear recibos)
+        $schedule->job(new \App\Jobs\RenovarCobroPlacasJob)
+            ->dailyAt('08:00')
+            ->name('renovar-placas-vencidas')
+            ->withoutOverlapping();
+
         // Crear recibos diariamente a las 9:00 AM
-        $schedule->job(new \App\Jobs\CreateRecibosJob())
+        $schedule->job(new \App\Jobs\CreateRecibosJob)
             ->dailyAt('09:00')
             ->name('crear-recibos-diarios')
             ->withoutOverlapping();
@@ -34,11 +40,11 @@ return Application::configure(basePath: dirname(__DIR__))
         //     ->name('crear-recibos-diarios');
 
         // Notificar vencimientos a las 9:30 AM
-        $schedule->job(new \App\Jobs\NotifyVencimientoRecibosJob())
+        $schedule->job(new \App\Jobs\NotifyVencimientoRecibosJob)
             ->dailyAt('09:30')
             ->name('notificar-vencimientos')
             ->withoutOverlapping();
-        $schedule->job(new \App\Jobs\NotifyRecibosVencidosJob())
+        $schedule->job(new \App\Jobs\NotifyRecibosVencidosJob)
             ->dailyAt('09:30')
             ->name('notificar-vencimientos')
             ->withoutOverlapping();

@@ -22,7 +22,7 @@ class ConfiguracionesSeeder extends Seeder
             'metodos_pago' => json_encode([
                 'Efectivo',
                 'Tarjeta de crédito',
-                'Transferencia bancaria'
+                'Transferencia bancaria',
             ]),
             'created_at' => now(),
             'updated_at' => now(),

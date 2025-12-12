@@ -2,10 +2,10 @@
 
 namespace Tests\Feature\Settings;
 
-use Tests\TestCase;
+use App\Livewire\Settings\Empresa;
 use App\Models\User;
 use Livewire\Livewire;
-use App\Livewire\Settings\Empresa;
+use Tests\TestCase;
 
 class EmpresaWhatsAppTest extends TestCase
 {
@@ -14,7 +14,7 @@ class EmpresaWhatsAppTest extends TestCase
     {
         $user = User::first();
 
-        if (!$user) {
+        if (! $user) {
             $this->markTestSkipped('No hay usuarios en la base de datos para este test');
         }
 
@@ -30,7 +30,7 @@ class EmpresaWhatsAppTest extends TestCase
     {
         $user = User::first();
 
-        if (!$user) {
+        if (! $user) {
             $this->markTestSkipped('No hay usuarios en la base de datos para este test');
         }
 

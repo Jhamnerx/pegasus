@@ -4,14 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Recibo;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\View\View;
 
 class PublicReciboController extends Controller
 {
-
     /**
      * Generar y mostrar el PDF del recibo público usando UUID
      */
@@ -31,7 +28,7 @@ class PublicReciboController extends Controller
         $pdf->setPaper('a4', 'portrait');
 
         // Retornar el PDF para visualizar en el navegador
-        return $pdf->stream('recibo-' . $recibo->numero_recibo . '.pdf');
+        return $pdf->stream('recibo-'.$recibo->numero_recibo.'.pdf');
     }
 
     /**
@@ -53,7 +50,7 @@ class PublicReciboController extends Controller
         $pdf->setPaper('a4', 'portrait');
 
         // Forzar descarga automática del archivo
-        return $pdf->download('recibo-' . $recibo->numero_recibo . '.pdf');
+        return $pdf->download('recibo-'.$recibo->numero_recibo.'.pdf');
     }
 
     /**
@@ -71,12 +68,12 @@ class PublicReciboController extends Controller
                     'telefono' => $configuracion->telefono,
                     'email' => $configuracion->email,
                     'logo' => $configuracion->logo,
-                    'metodos_pago' => $configuracion->metodos_pago ? json_decode($configuracion->metodos_pago, true) : []
+                    'metodos_pago' => $configuracion->metodos_pago ? json_decode($configuracion->metodos_pago, true) : [],
                 ];
             }
         } catch (\Exception $e) {
             // Log del error para debugging
-            Log::warning("Error obteniendo configuración de empresa: " . $e->getMessage());
+            Log::warning('Error obteniendo configuración de empresa: '.$e->getMessage());
         }
 
         // Si no hay datos en BD o hay error, usar valores por defecto
@@ -86,7 +83,7 @@ class PublicReciboController extends Controller
             'telefono' => null,
             'email' => null,
             'logo' => null,
-            'metodos_pago' => []
+            'metodos_pago' => [],
         ];
     }
 }

@@ -42,7 +42,7 @@ class Form extends Component
 
         return [
             'nombre_cliente' => 'required|string|max:255',
-            'ruc_dni' => 'required|string|max:20|unique:clientes,ruc_dni,' . $clienteId,
+            'ruc_dni' => 'required|string|max:20|unique:clientes,ruc_dni,'.$clienteId,
             'telefono' => 'nullable|string|max:20',
             'telefono_1' => 'nullable|string|max:20',
             'telefono_2' => 'nullable|string|max:20',

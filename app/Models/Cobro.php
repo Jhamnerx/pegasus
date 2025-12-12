@@ -2,11 +2,11 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Carbon\Carbon;
 
 class Cobro extends Model
 {
@@ -150,16 +150,16 @@ class Cobro extends Model
     {
         $this->update([
             'estado' => 'procesado',
-            'fecha_procesamiento' => now()
+            'fecha_procesamiento' => now(),
         ]);
     }
 
-    public function anular(string $motivo = null): void
+    public function anular(?string $motivo = null): void
     {
         $this->update([
             'estado' => 'anulado',
             'notas' => $this->notas . "\n\nAnulado: " . now()->format('Y-m-d H:i:s') .
-                ($motivo ? " - Motivo: {$motivo}" : '')
+                ($motivo ? " - Motivo: {$motivo}" : ''),
         ]);
     }
 
@@ -171,5 +171,38 @@ class Cobro extends Model
         return $this->servicio ?
             $this->servicio->nombre_servicio :
             $this->descripcion_servicio_personalizado ?? 'Servicio no especificado';
+    }
+
+    /**
+     * Verificar si tiene placas vencidas que necesitan renovación
+     */
+    public function tienePlacasParaRenovar(): bool
+    {
+        return $this->cobroPlacas()
+            ->whereDate('fecha_fin', '<', now())
+            ->whereHas('recibos', function ($query) {
+                $query->whereHas('recibo', function ($reciboQuery) {
+                    $reciboQuery->whereIn('estado_recibo', ['pendiente', 'pagado', 'vencido']);
+                });
+            })
+            ->exists();
+    }
+
+    /**
+     * Obtener placas activas (no vencidas)
+     */
+    public function placasActivas()
+    {
+        return $this->cobroPlacas()
+            ->whereDate('fecha_fin', '>=', now());
+    }
+
+    /**
+     * Obtener placas vencidas
+     */
+    public function placasVencidas()
+    {
+        return $this->cobroPlacas()
+            ->whereDate('fecha_fin', '<', now());
     }
 }

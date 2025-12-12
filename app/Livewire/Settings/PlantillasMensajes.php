@@ -11,7 +11,9 @@ class PlantillasMensajes extends Component
     use WireUiActions;
 
     public $plantillas = [];
+
     public $plantillaSeleccionada = null;
+
     public $editando = false;
 
     // Campos del formulario
@@ -74,7 +76,7 @@ class PlantillasMensajes extends Component
 
     public function getVariablesDisponibles(): array
     {
-        if (!$this->plantillaSeleccionada) {
+        if (! $this->plantillaSeleccionada) {
             return [];
         }
 
@@ -105,6 +107,6 @@ class PlantillasMensajes extends Component
 
     public function insertarVariable($variable): void
     {
-        $this->mensaje .= '{' . $variable . '}';
+        $this->mensaje .= '{'.$variable.'}';
     }
 }

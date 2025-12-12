@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cliente;
-use App\Models\Servicio;
 use App\Models\Cobro;
-use App\Models\Recibo;
 use App\Models\Configuracion;
+use App\Models\Recibo;
+use App\Models\Servicio;
 use Illuminate\Http\Request;
 
 class SelectController extends Controller
@@ -21,13 +21,13 @@ class SelectController extends Controller
             ->orderBy('nombre_cliente')
             ->when(
                 $request->search,
-                fn($query) => $query
+                fn ($query) => $query
                     ->where('nombre_cliente', 'like', "%{$request->search}%")
                     ->orWhere('ruc_dni', 'like', "%{$request->search}%")
             )
             ->when(
                 $request->exists('selected'),
-                fn($query) => $query->whereIn('id', $request->input('selected', [])),
+                fn ($query) => $query->whereIn('id', $request->input('selected', [])),
             )
             ->where('estado', 'Activo')
             ->limit(50)
@@ -35,7 +35,7 @@ class SelectController extends Controller
             ->map(function ($cliente) {
                 return [
                     'value' => $cliente->id,
-                    'label' => $cliente->nombre_cliente . ' (' . $cliente->ruc_dni . ')',
+                    'label' => $cliente->nombre_cliente.' ('.$cliente->ruc_dni.')',
                     'description' => $cliente->correo_electronico ?? 'Sin email',
                 ];
             });
@@ -51,13 +51,13 @@ class SelectController extends Controller
             ->orderBy('nombre_servicio')
             ->when(
                 $request->search,
-                fn($query) => $query
+                fn ($query) => $query
                     ->where('nombre_servicio', 'like', "%{$request->search}%")
                     ->orWhere('descripcion', 'like', "%{$request->search}%")
             )
             ->when(
                 $request->exists('selected'),
-                fn($query) => $query->whereIn('id', $request->input('selected', [])),
+                fn ($query) => $query->whereIn('id', $request->input('selected', [])),
             )
             ->where('activo', true)
             ->limit(50)
@@ -66,7 +66,7 @@ class SelectController extends Controller
                 return [
                     'value' => $servicio->id,
                     'label' => $servicio->nombre_servicio,
-                    'description' => 'S/ ' . number_format($servicio->precio_base, 2),
+                    'description' => 'S/ '.number_format($servicio->precio_base, 2),
                 ];
             });
     }
@@ -82,7 +82,7 @@ class SelectController extends Controller
             ->orderBy('created_at', 'desc')
             ->when(
                 $request->search,
-                fn($query) => $query
+                fn ($query) => $query
                     ->whereHas('cliente', function ($q) use ($request) {
                         $q->where('nombre_cliente', 'like', "%{$request->search}%")
                             ->orWhere('ruc_dni', 'like', "%{$request->search}%");
@@ -93,7 +93,7 @@ class SelectController extends Controller
             )
             ->when(
                 $request->exists('selected'),
-                fn($query) => $query->whereIn('id', $request->input('selected', [])),
+                fn ($query) => $query->whereIn('id', $request->input('selected', [])),
             )
             ->where('estado', 'procesado')
             ->limit(50)
@@ -104,11 +104,11 @@ class SelectController extends Controller
 
                 return [
                     'value' => $cobro->id,
-                    'label' => ($cobro->cliente?->nombre_cliente ?? 'Sin cliente') .
-                        ' - ' . ($cobro->servicio?->nombre_servicio ?? 'Sin servicio') .
-                        ' - S/ ' . number_format($montoTotal, 2),
-                    'description' => 'Placas: ' . ($cobro->cantidad_placas ?? 1) .
-                        ' | Período: ' . ($cobro->periodo_facturacion ?? 'N/A'),
+                    'label' => ($cobro->cliente?->nombre_cliente ?? 'Sin cliente').
+                        ' - '.($cobro->servicio?->nombre_servicio ?? 'Sin servicio').
+                        ' - S/ '.number_format($montoTotal, 2),
+                    'description' => 'Placas: '.($cobro->cantidad_placas ?? 1).
+                        ' | Período: '.($cobro->periodo_facturacion ?? 'N/A'),
                 ];
             });
     }
@@ -123,7 +123,7 @@ class SelectController extends Controller
             ->orderBy('created_at', 'desc')
             ->when(
                 $request->search,
-                fn($query) => $query
+                fn ($query) => $query
                     ->where('numero_recibo', 'like', "%{$request->search}%")
                     ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(data_cliente, '$.nombre_cliente')) LIKE ?", ["%{$request->search}%"])
                     ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(data_cliente, '$.ruc_dni')) LIKE ?", ["%{$request->search}%"])
@@ -142,7 +142,7 @@ class SelectController extends Controller
             )
             ->when(
                 $request->exists('selected'),
-                fn($query) => $query->whereIn('id', $request->input('selected', [])),
+                fn ($query) => $query->whereIn('id', $request->input('selected', [])),
             )
             ->limit(50)
             ->get()
@@ -152,11 +152,11 @@ class SelectController extends Controller
 
                 return [
                     'value' => $recibo->id,
-                    'label' => $recibo->numero_recibo .
-                        ' - ' . $clienteNombre .
-                        ' - S/ ' . number_format($recibo->monto_recibo, 2),
-                    'description' => 'Estado: ' . ucfirst($recibo->estado_recibo) .
-                        ' | Vencimiento: ' . ($recibo->fecha_vencimiento?->format('d/m/Y') ?? 'N/A'),
+                    'label' => $recibo->numero_recibo.
+                        ' - '.$clienteNombre.
+                        ' - S/ '.number_format($recibo->monto_recibo, 2),
+                    'description' => 'Estado: '.ucfirst($recibo->estado_recibo).
+                        ' | Vencimiento: '.($recibo->fecha_vencimiento?->format('d/m/Y') ?? 'N/A'),
                 ];
             });
     }
@@ -172,10 +172,10 @@ class SelectController extends Controller
         $metodosPorDefecto = [
             'Efectivo',
             'Transferencia bancaria',
-            'Tarjeta de crédito'
+            'Tarjeta de crédito',
         ];
 
-        if (!$configuracion || !$configuracion->metodos_pago) {
+        if (! $configuracion || ! $configuracion->metodos_pago) {
             $metodos = $metodosPorDefecto;
         } else {
             // Decodificar JSON de la base de datos
@@ -184,7 +184,7 @@ class SelectController extends Controller
                 : $configuracion->metodos_pago;
 
             // Usar métodos por defecto si el JSON es inválido
-            if (!is_array($metodos)) {
+            if (! is_array($metodos)) {
                 $metodos = $metodosPorDefecto;
             }
         }

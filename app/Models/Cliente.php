@@ -83,4 +83,30 @@ class Cliente extends Model
     {
         return ! empty($this->telefonos);
     }
+
+    /**
+     * Obtener todos los recibos no pagados del cliente
+     */
+    public function recibosNoPagados()
+    {
+        return Recibo::where('cliente_id', $this->id)
+            ->whereIn('estado_recibo', ['pendiente', 'vencido'])
+            ->orderBy('fecha_vencimiento', 'asc');
+    }
+
+    /**
+     * Obtener el total de deuda del cliente
+     */
+    public function getTotalDeudaAttribute(): float
+    {
+        return (float) $this->recibosNoPagados()->sum('monto_recibo');
+    }
+
+    /**
+     * Obtener la cantidad de recibos pendientes de pago
+     */
+    public function getCantidadRecibosPendientesAttribute(): int
+    {
+        return $this->recibosNoPagados()->count();
+    }
 }

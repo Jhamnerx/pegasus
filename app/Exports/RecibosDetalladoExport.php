@@ -109,7 +109,7 @@ class RecibosDetalladoExport implements FromQuery, WithHeadings, WithMapping
             $fila->data_cliente['ruc_dni'] ?? 'N/A',
             $fila->detalle_placa ?: 'N/A',
             $fila->concepto ?: 'N/A',
-            $fila->data_servicio['nombre'] . ' ' . $fila->data_servicio['descripcion'] ?? 'N/A',
+            $fila->data_servicio['nombre'].' '.$fila->data_servicio['descripcion'] ?? 'N/A',
             $fila->detalle_monto ?: 0,
             $fila->monto_recibo,
             $fila->fecha_emision?->format('d/m/Y') ?? 'N/A',

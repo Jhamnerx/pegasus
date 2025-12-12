@@ -3,19 +3,18 @@
 namespace App\Livewire\Clientes;
 
 use App\Models\Cliente;
-use Livewire\Component;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
-use Livewire\WithPagination;
+use Livewire\Component;
 use Livewire\WithoutUrlPagination;
+use Livewire\WithPagination;
 
 class Index extends Component
 {
-    use WithPagination, WithoutUrlPagination;
+    use WithoutUrlPagination, WithPagination;
 
     #[Url]
     public $search = '';
-
 
     public function render()
     {
@@ -25,10 +24,10 @@ class Index extends Component
                     ->orWhere('ruc_dni', 'like', '%' . $this->search . '%');
             })
             ->latest()
-            ->paginate(10);
+            ->paginate(15);
 
         return view('livewire.clientes.index', [
-            'clientes' => $clientes
+            'clientes' => $clientes,
         ]);
     }
 
@@ -56,5 +55,10 @@ class Index extends Component
     public function openModalDelete(Cliente $cliente): void
     {
         $this->dispatch('openModalDelete', cliente: $cliente);
+    }
+
+    public function openDeudaModal(Cliente $cliente): void
+    {
+        $this->dispatch('openDeudaModal', cliente: $cliente);
     }
 }

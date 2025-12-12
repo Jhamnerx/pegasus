@@ -3,8 +3,8 @@
 namespace App\Livewire\Clientes;
 
 use App\Models\Cliente;
-use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Component;
 use WireUi\Traits\WireUiActions;
 
 class Delete extends Component
@@ -12,6 +12,7 @@ class Delete extends Component
     use WireUiActions;
 
     public ?Cliente $cliente = null;
+
     public bool $showModal = false;
 
     #[On('openModalDelete')]
@@ -29,7 +30,7 @@ class Delete extends Component
 
     public function confirmDelete(): void
     {
-        if (!$this->cliente) {
+        if (! $this->cliente) {
             return;
         }
 
@@ -40,6 +41,7 @@ class Delete extends Component
                     'No se puede eliminar',
                     'Este cliente tiene cobros asociados. No es posible eliminarlo.'
                 );
+
                 return;
             }
 

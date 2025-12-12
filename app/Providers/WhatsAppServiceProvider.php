@@ -3,7 +3,6 @@
 namespace App\Providers;
 
 use App\Services\WhatsAppService;
-use App\Services\MockWhatsAppService;
 use Illuminate\Support\ServiceProvider;
 
 class WhatsAppServiceProvider extends ServiceProvider
@@ -14,7 +13,7 @@ class WhatsAppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind('whatsapp', function ($app) {
-            return new WhatsAppService();
+            return new WhatsAppService;
         });
 
         // También registrar con el nombre de clase para inyección de dependencias

@@ -129,7 +129,7 @@ class Form extends Component
         } catch (\Exception $e) {
             $this->notification()->error(
                 'Error',
-                'Ocurrió un error al guardar el usuario: ' . $e->getMessage()
+                'Ocurrió un error al guardar el usuario: '.$e->getMessage()
             );
         }
     }

@@ -3,19 +3,23 @@
 namespace App\Livewire\Cobros;
 
 use App\Models\Cobro;
-use Livewire\Component;
 use Livewire\Attributes\On;
-use Livewire\WithPagination;
+use Livewire\Component;
 use Livewire\WithoutUrlPagination;
+use Livewire\WithPagination;
 
 class Index extends Component
 {
-    use WithPagination, WithoutUrlPagination;
+    use WithoutUrlPagination, WithPagination;
 
     public string $search = '';
+
     public string $estadoFilter = 'all';
+
     public string $clienteFilter = '';
+
     public $periodoFilter = '';
+
     public int $perPage = 10;
 
     protected $queryString = [
@@ -23,13 +27,13 @@ class Index extends Component
         'estadoFilter' => ['except' => 'all'],
         'clienteFilter' => ['except' => ''],
         'periodoFilter' => ['except' => ''],
-        'perPage' => ['except' => 10]
+        'perPage' => ['except' => 10],
     ];
 
     public function render()
     {
         return view('livewire.cobros.index', [
-            'cobros' => $this->getCobrosProperty()
+            'cobros' => $this->getCobrosProperty(),
         ]);
     }
 
@@ -86,14 +90,14 @@ class Index extends Component
             ->with(['cliente', 'servicio', 'cobroPlacas'])
             ->when($this->search, function ($query) {
                 $query->whereHas('cliente', function ($q) {
-                    $q->where('nombre_cliente', 'like', '%' . $this->search . '%')
-                        ->orWhere('ruc_dni', 'like', '%' . $this->search . '%');
+                    $q->where('nombre_cliente', 'like', '%'.$this->search.'%')
+                        ->orWhere('ruc_dni', 'like', '%'.$this->search.'%');
                 })
                     ->orWhereHas('servicio', function ($q) {
-                        $q->where('nombre_servicio', 'like', '%' . $this->search . '%');
+                        $q->where('nombre_servicio', 'like', '%'.$this->search.'%');
                     })
-                    ->orWhere('descripcion_servicio_personalizado', 'like', '%' . $this->search . '%')
-                    ->orWhere('notas', 'like', '%' . $this->search . '%');
+                    ->orWhere('descripcion_servicio_personalizado', 'like', '%'.$this->search.'%')
+                    ->orWhere('notas', 'like', '%'.$this->search.'%');
             })
             ->when($this->estadoFilter !== 'all', function ($query) {
                 $query->where('estado', $this->estadoFilter);

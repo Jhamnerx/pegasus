@@ -3,14 +3,16 @@
 namespace App\Livewire\Recibos;
 
 use App\Models\Recibo;
-use Livewire\Component;
-use Livewire\Attributes\On;
 use Illuminate\Support\Facades\Auth;
+use Livewire\Attributes\On;
+use Livewire\Component;
 
 class Delete extends Component
 {
     public ?Recibo $recibo = null;
+
     public bool $showModal = false;
+
     public string $motivoAnulacion = '';
 
     protected array $rules = [
@@ -36,6 +38,7 @@ class Delete extends Component
         // Verificar si el recibo puede ser anulado
         if ($this->recibo->estado_recibo === 'anulado') {
             session()->flash('error', 'Este recibo ya está anulado.');
+
             return;
         }
 
@@ -58,9 +61,10 @@ class Delete extends Component
 
     public function anular(): void
     {
-        if (!$this->recibo) {
+        if (! $this->recibo) {
             session()->flash('error', 'No se ha seleccionado ningún recibo.');
             $this->closeModal();
+
             return;
         }
 
@@ -71,13 +75,15 @@ class Delete extends Component
             if ($this->recibo->estado_recibo === 'anulado') {
                 session()->flash('error', 'Este recibo ya está anulado.');
                 $this->closeModal();
+
                 return;
             }
 
             // Verificar si hay restricciones adicionales
-            if ($this->recibo->estado_recibo === 'pagado' && !$this->canAnularPagado()) {
+            if ($this->recibo->estado_recibo === 'pagado' && ! $this->canAnularPagado()) {
                 session()->flash('error', 'No se puede anular un recibo pagado sin autorización especial.');
                 $this->closeModal();
+
                 return;
             }
 
@@ -89,7 +95,7 @@ class Delete extends Component
             session()->flash('success', 'Recibo anulado correctamente.');
             $this->closeModal();
         } catch (\Exception $e) {
-            session()->flash('error', 'Error al anular el recibo: ' . $e->getMessage());
+            session()->flash('error', 'Error al anular el recibo: '.$e->getMessage());
             $this->closeModal();
         }
     }
@@ -102,12 +108,13 @@ class Delete extends Component
 
         // Por ahora, solo permitir si es un administrador o similar
         $user = Auth::user();
+
         return $user && method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('supervisor'));
     }
 
     public function getWarningMessage(): string
     {
-        if (!$this->recibo) {
+        if (! $this->recibo) {
             return 'No se ha seleccionado ningún recibo.';
         }
 
@@ -124,7 +131,7 @@ class Delete extends Component
 
     public function getButtonText(): string
     {
-        if (!$this->recibo) {
+        if (! $this->recibo) {
             return 'Anular Recibo';
         }
 

@@ -12,13 +12,18 @@ class Form extends Component
     use WireUiActions;
 
     public bool $isOpen = false;
+
     public ?Servicio $servicio = null;
+
     public bool $isEditing = false;
 
     // Propiedades del formulario
     public string $nombre_servicio = '';
+
     public string $descripcion = '';
+
     public string $precio_base = '';
+
     public bool $activo = true;
 
     protected function rules(): array
@@ -26,7 +31,7 @@ class Form extends Component
         $servicioId = $this->servicio?->id;
 
         return [
-            'nombre_servicio' => 'required|string|max:255|unique:servicios,nombre_servicio,' . $servicioId,
+            'nombre_servicio' => 'required|string|max:255|unique:servicios,nombre_servicio,'.$servicioId,
             'descripcion' => 'nullable|string|max:1000',
             'precio_base' => 'required|numeric|min:0|max:99999.99',
             'activo' => 'required|boolean',

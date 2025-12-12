@@ -27,7 +27,7 @@ class Index extends Component
 
     public string $sortDirection = 'desc';
 
-    public int $perPage = 10;
+    public int $perPage = 15;
 
     public ?Recibo $selectedRecibo = null;
 
@@ -58,7 +58,7 @@ class Index extends Component
         'estadoFilter' => ['except' => 'todos'],
         'sortField' => ['except' => 'created_at'],
         'sortDirection' => ['except' => 'desc'],
-        'perPage' => ['except' => 10],
+        'perPage' => ['except' => 15],
     ];
 
     public function render()
@@ -260,7 +260,7 @@ class Index extends Component
 
         // Crear nombre del archivo con timestamp
         $tipoDetalle = $this->exportFilters['tipo_detalle'] === 'detallado' ? '-detallado' : '';
-        $filename = 'recibos-export'.$tipoDetalle.'-'.now()->format('Y-m-d-H-i').'.xlsx';
+        $filename = 'recibos-export' . $tipoDetalle . '-' . now()->format('Y-m-d-H-i') . '.xlsx';
 
         // Cerrar modal
         // $this->isOpenExportModal = false;
@@ -289,10 +289,10 @@ class Index extends Component
         // Aplicar filtro de búsqueda
         if ($this->search) {
             $query->where(function ($q) {
-                $q->where('numero_recibo', 'like', '%'.$this->search.'%')
-                    ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(data_cliente, '$.nombre_cliente')) LIKE ?", ['%'.$this->search.'%'])
-                    ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(data_cliente, '$.ruc_dni')) LIKE ?", ['%'.$this->search.'%'])
-                    ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(data_cobro, '$.placa')) LIKE ?", ['%'.$this->search.'%']);
+                $q->where('numero_recibo', 'like', '%' . $this->search . '%')
+                    ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(data_cliente, '$.nombre_cliente')) LIKE ?", ['%' . $this->search . '%'])
+                    ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(data_cliente, '$.ruc_dni')) LIKE ?", ['%' . $this->search . '%'])
+                    ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(data_cobro, '$.placa')) LIKE ?", ['%' . $this->search . '%']);
             });
         }
 

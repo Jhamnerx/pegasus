@@ -2,24 +2,26 @@
 
 namespace App\Livewire\Servicios;
 
-use Livewire\Component;
 use App\Models\Servicio;
 use Livewire\Attributes\On;
-use Livewire\WithPagination;
+use Livewire\Component;
 use Livewire\WithoutUrlPagination;
+use Livewire\WithPagination;
 
 class Index extends Component
 {
-    use WithPagination, WithoutUrlPagination;
+    use WithoutUrlPagination, WithPagination;
 
     public string $search = '';
+
     public string $estadoFilter = 'all';
-    public int $perPage = 10;
+
+    public int $perPage = 15;
 
     protected $queryString = [
         'search' => ['except' => ''],
         'estadoFilter' => ['except' => 'all'],
-        'perPage' => ['except' => 10]
+        'perPage' => ['except' => 15],
     ];
 
     public function render()
@@ -39,7 +41,7 @@ class Index extends Component
             ->paginate($this->perPage);
 
         return view('livewire.servicios.index', [
-            'servicios' => $servicios
+            'servicios' => $servicios,
         ]);
     }
 

@@ -2,11 +2,11 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Carbon\Carbon;
 
 class CobroPlaca extends Model
 {
@@ -75,7 +75,7 @@ class CobroPlaca extends Model
      */
     public function calcularProrrateo(): array
     {
-        if (!$this->cobro) {
+        if (! $this->cobro) {
             return [
                 'dias_prorrateados' => 0,
                 'factor_prorateo' => 1.0,

@@ -5,12 +5,12 @@ namespace App\Livewire\Reportes;
 use App\Models\Cobro;
 use App\Models\Recibo;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 
 class Index extends Component
 {
     public string $tipoReporte = 'resumen-pagos';
+
     public string $periodo = 'mes-actual';
 
     public function mount()
@@ -187,7 +187,7 @@ class Index extends Component
             'mes-actual' => [
                 'inicio' => Carbon::now()->startOfMonth(),
                 'fin' => Carbon::now()->endOfMonth(),
-                'label' => 'Mes Actual (' . Carbon::now()->startOfMonth()->format('d/m/Y') . ' - ' . Carbon::now()->endOfMonth()->format('d/m/Y') . ')',
+                'label' => 'Mes Actual ('.Carbon::now()->startOfMonth()->format('d/m/Y').' - '.Carbon::now()->endOfMonth()->format('d/m/Y').')',
             ],
             'mes-anterior' => [
                 'inicio' => Carbon::now()->subMonth()->startOfMonth(),

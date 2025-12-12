@@ -47,10 +47,12 @@ class CreateRecibosJob implements ShouldQueue
                 })
                 ->whereDate('fecha_fin', '>=', $fechaHoy)     // Desde hoy
                 ->whereDate('fecha_fin', '<=', $fechaMaxima) // Hasta el día máximo
-                ->whereDoesntHave('recibos', function ($query) {
+                ->whereDoesntHave('recibos', function ($query) use ($fechaHoy, $fechaMaxima) {
                     // Verificar que no exista un recibo_detalle para este período específico
-                    $query->whereHas('recibo', function ($reciboQuery) {
-                        $reciboQuery->whereIn('estado_recibo', ['pendiente', 'pagado']);
+                    $query->whereHas('recibo', function ($reciboQuery) use ($fechaHoy, $fechaMaxima) {
+                        $reciboQuery->whereIn('estado_recibo', ['pendiente', 'pagado'])
+                            ->whereDate('fecha_vencimiento', '>=', $fechaHoy)
+                            ->whereDate('fecha_vencimiento', '<=', $fechaMaxima);
                     })
                         ->whereColumn('fecha_inicio_periodo', 'cobro_placas.fecha_inicio')
                         ->whereColumn('fecha_fin_periodo', 'cobro_placas.fecha_fin');
@@ -162,9 +164,11 @@ class CreateRecibosJob implements ShouldQueue
         // Actualizar monto total del recibo
         $recibo->update(['monto_recibo' => $montoTotal]);
 
-        $cobro->estado = 'procesado';
-        $cobro->fecha_procesamiento = Carbon::now()->toDateString();
-        $cobro->save();
+        // NO marcar como procesado para permitir cobros recurrentes
+        // El cobro se marca como procesado manualmente si ya no se necesita
+        // $cobro->estado = 'procesado';
+        // $cobro->fecha_procesamiento = Carbon::now()->toDateString();
+        // $cobro->save();
 
         // Cargar la relación cliente para el recibo antes de enviar
         $recibo->load('cliente');

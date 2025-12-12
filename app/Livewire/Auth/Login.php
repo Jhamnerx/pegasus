@@ -22,7 +22,9 @@ class Login extends Component
     public string $password = '';
 
     public bool $remember = false;
+
     public bool $isLoading = false;
+
     public string $error = '';
 
     public function mount(): void
@@ -73,6 +75,7 @@ class Login extends Component
     {
         return '1.0.0';
     }
+
     /**
      * Ensure the authentication request is not rate limited.
      */
@@ -94,13 +97,12 @@ class Login extends Component
         ]);
     }
 
-
     /**
      * Get the authentication rate limiting throttle key.
      */
     protected function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->email) . '|' . request()->ip());
+        return Str::transliterate(Str::lower($this->email).'|'.request()->ip());
     }
 
     public function render()

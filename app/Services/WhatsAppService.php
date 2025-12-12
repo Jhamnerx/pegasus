@@ -8,7 +8,9 @@ use Illuminate\Support\Facades\Log;
 class WhatsAppService
 {
     private string $apiUrl;
+
     private string $apiKey;
+
     private string $sender;
 
     public function __construct()
@@ -28,27 +30,30 @@ class WhatsAppService
                 'api_key' => $this->apiKey,
                 'sender' => $this->sender,
                 'number' => $this->limpiarTelefono($number),
-                'message' => $message
+                'message' => $message,
             ];
 
-            Log::info("Enviando mensaje WhatsApp con datos:", $data);
+            Log::info('Enviando mensaje WhatsApp con datos:', $data);
 
             $response = Http::asForm()->post($this->apiUrl, $data);
 
             if ($response->successful()) {
                 Log::info("Mensaje WhatsApp enviado exitosamente a: {$number}");
-                Log::info("Respuesta de la API: " . $response->body());
+                Log::info('Respuesta de la API: '.$response->body());
+
                 return true;
             } else {
-                Log::error("Error enviando mensaje WhatsApp:", [
+                Log::error('Error enviando mensaje WhatsApp:', [
                     'status' => $response->status(),
                     'body' => $response->body(),
-                    'sent_data' => $data
+                    'sent_data' => $data,
                 ]);
+
                 return false;
             }
         } catch (\Exception $e) {
-            Log::error("Excepción enviando mensaje WhatsApp: " . $e->getMessage());
+            Log::error('Excepción enviando mensaje WhatsApp: '.$e->getMessage());
+
             return false;
         }
     }
@@ -68,33 +73,36 @@ class WhatsAppService
                 'number' => $this->limpiarTelefono($number),
                 'media_type' => $mediaType,
                 'caption' => $message,
-                'url' => $mediaUrl
+                'url' => $mediaUrl,
             ];
 
-            Log::info("Enviando archivo WhatsApp con datos:", $data);
+            Log::info('Enviando archivo WhatsApp con datos:', $data);
 
             $response = Http::asForm()->post($mediaEndpoint, $data);
 
-            Log::info("Respuesta del servidor:", [
+            Log::info('Respuesta del servidor:', [
                 'status' => $response->status(),
                 'body' => $response->body(),
-                'endpoint' => $mediaEndpoint
+                'endpoint' => $mediaEndpoint,
             ]);
 
             if ($response->successful()) {
                 Log::info("Mensaje con archivo enviado exitosamente a: {$number}");
+
                 return true;
             } else {
-                Log::error("Error enviando archivo WhatsApp:", [
+                Log::error('Error enviando archivo WhatsApp:', [
                     'status' => $response->status(),
                     'body' => $response->body(),
                     'endpoint' => $mediaEndpoint,
-                    'sent_data' => $data
+                    'sent_data' => $data,
                 ]);
+
                 return false;
             }
         } catch (\Exception $e) {
-            Log::error("Excepción enviando archivo WhatsApp: " . $e->getMessage());
+            Log::error('Excepción enviando archivo WhatsApp: '.$e->getMessage());
+
             return false;
         }
     }
@@ -108,8 +116,8 @@ class WhatsAppService
         $telefono = preg_replace('/[^0-9]/', '', $telefono);
 
         // Si no empieza con 51, agregarlo (código de Perú)
-        if (!str_starts_with($telefono, '51') && strlen($telefono) == 9) {
-            $telefono = '51' . $telefono;
+        if (! str_starts_with($telefono, '51') && strlen($telefono) == 9) {
+            $telefono = '51'.$telefono;
         }
 
         return $telefono;
@@ -120,7 +128,7 @@ class WhatsAppService
      */
     public function isConfigured(): bool
     {
-        return !empty($this->apiUrl) && !empty($this->apiKey) && !empty($this->sender);
+        return ! empty($this->apiUrl) && ! empty($this->apiKey) && ! empty($this->sender);
     }
 
     /**
@@ -128,7 +136,7 @@ class WhatsAppService
      */
     public function generatePdfUrl(string $reciboUuid): string
     {
-        return config('app.url') . "/recibo/{$reciboUuid}";
+        return config('app.url')."/recibo/{$reciboUuid}";
     }
 
     /**
@@ -136,6 +144,6 @@ class WhatsAppService
      */
     public function generatePdfDownloadUrl(string $reciboUuid): string
     {
-        return config('app.url') . "/recibo/download/{$reciboUuid}";
+        return config('app.url')."/recibo/download/{$reciboUuid}";
     }
 }

@@ -63,7 +63,7 @@ class Status extends Component
         } catch (\Exception $e) {
             $this->notification()->error(
                 'Error',
-                'Ocurrió un error al cambiar el estado del usuario: ' . $e->getMessage()
+                'Ocurrió un error al cambiar el estado del usuario: '.$e->getMessage()
             );
         }
     }

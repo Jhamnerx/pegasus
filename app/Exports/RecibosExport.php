@@ -97,7 +97,7 @@ class RecibosExport implements FromQuery, WithHeadings, WithMapping
             $recibo->data_cliente['nombre_cliente'] ?? 'N/A',
             $recibo->data_cliente['ruc_dni'] ?? 'N/A',
             $placas ?: 'N/A',
-            $recibo->data_servicio['nombre'] . ' ' . $recibo->data_servicio['descripcion'] ?? 'N/A',
+            $recibo->data_servicio['nombre'].' '.$recibo->data_servicio['descripcion'] ?? 'N/A',
             $recibo->monto_recibo,
             $recibo->fecha_emision?->format('d/m/Y') ?? 'N/A',
             $recibo->fecha_vencimiento?->format('d/m/Y') ?? 'N/A',

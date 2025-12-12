@@ -1,3 +1,256 @@
+# Pegasus GPS - Sistema de Gestión de Recibos
+
+## 🎯 Descripción del Proyecto
+
+Sistema de facturación y gestión de cobros para servicios GPS vehiculares. Gestiona clientes, servicios, cobros recurrentes por placas vehiculares, emisión automática de recibos con prorrateado, y notificaciones WhatsApp.
+
+**Stack:** Laravel 12, Livewire 3, Volt, WireUI, Flux UI, Tailwind v4, PHPUnit, Laravel Boost MCP.
+
+## 🏗️ Arquitectura del Dominio
+
+### Modelo de Negocio Central
+
+El sistema maneja un flujo de facturación recurrente basado en placas vehiculares:
+
+1. **Cliente** → tiene múltiples **Cobros** (configuraciones de facturación)
+2. **Cobro** → define servicio, periodo, monto y frecuencia
+3. **CobroPlaca** → cada placa en un cobro con fechas inicio/fin y cálculo prorrateado
+4. **Recibo** → documento generado automáticamente por placa al vencimiento
+5. **ReciboDetalle** → líneas de concepto del recibo
+
+### Entidades Principales
+
+-   `Cliente`: Gestión de clientes con hasta 4 teléfonos (WhatsApp)
+-   `Servicio`: Catálogo de servicios GPS con precio base
+-   `Cobro`: Configuración de facturación (periodo, prorrateado, moneda)
+-   `CobroPlaca`: Placas vehiculares individuales con fechas y monto calculado
+-   `Recibo`: Documento de cobro generado (estados: pendiente, pagado, vencido, anulado)
+-   `Configuracion`: Settings globales de la empresa
+
+### Jobs Críticos (Queue)
+
+```php
+// bootstrap/app.php - Scheduled daily
+RenovarCobroPlacasJob       // 08:00 AM - Renueva placas vencidas para cobros recurrentes
+CreateRecibosJob            // 09:00 AM - Genera recibos para placas que vencen
+NotifyVencimientoRecibosJob // 09:30 AM - Notifica recibos próximos a vencer
+NotifyRecibosVencidosJob    // 09:30 AM - Notifica recibos ya vencidos
+```
+
+**IMPORTANTE:**
+
+-   Los jobs usan `ShouldQueue` - verificar configuración de colas para deployment
+-   **RenovarCobroPlacasJob** se ejecuta ANTES de CreateRecibosJob para preparar nuevos periodos
+-   Los cobros permanecen en estado "activo" para permitir facturación recurrente
+-   Un cobro solo se marca como "procesado" manualmente cuando ya no se necesita
+
+## 🎨 Frontend: Livewire + WireUI + Flux UI
+
+### Patrón de Componentes
+
+El proyecto usa **Livewire tradicional** (NO Volt) para todos los componentes CRUD:
+
+```
+app/Livewire/
+  Clientes/
+    Index.php      # Lista con búsqueda y paginación
+    Form.php       # Modal de creación/edición (WireUi modal)
+    Delete.php     # Modal de confirmación
+  Recibos/
+    Index.php      # Vista principal con filtros
+    Form.php       # Generación manual de recibos
+```
+
+**Convención de eventos entre componentes:**
+
+```php
+// Index.php
+$this->dispatch('openCreateForm');
+$this->dispatch('openEditForm', cliente: $cliente);
+
+// Form.php
+#[On('openCreateForm')]
+public function openCreate(): void
+
+#[On('clientesSaved')]
+public function refreshClientes(): void
+```
+
+### UI Components
+
+-   **WireUI** (`x-button`, `x-input`, `x-badge`, `x-select`): Componentes interactivos principales
+-   **Flux UI** (`flux:button`, `flux:input`): Componentes estáticos/decorativos
+-   Verificar sibling components antes de crear nuevos
+-   Dark mode: Usar clases `dark:` en todos los componentes nuevos
+
+### Validación
+
+**SIEMPRE usar inline validation en Livewire** - NO hay Form Requests en este proyecto:
+
+```php
+protected function rules(): array {
+    return [
+        'nombre_cliente' => 'required|string|max:255',
+        'ruc_dni' => 'required|string|max:20|unique:clientes,ruc_dni,'.$clienteId,
+    ];
+}
+
+protected function validationAttributes(): array {
+    return ['nombre_cliente' => 'nombre del cliente'];
+}
+```
+
+## 📊 Base de Datos
+
+### Relaciones Clave
+
+```php
+Cliente → hasMany(Cobro)
+Cobro → belongsTo(Cliente), hasMany(CobroPlaca), hasMany(Recibo)
+CobroPlaca → belongsTo(Cobro), hasMany(ReciboDetalle)
+Recibo → belongsTo(Cliente), belongsTo(Cobro), belongsTo(CobroPlaca)
+```
+
+### Scopes Comunes
+
+```php
+Cliente::activos()
+Recibo::where('estado_recibo', 'pendiente')
+CobroPlaca::whereDate('fecha_fin', '>=', now())
+```
+
+### Tipos de Datos Críticos
+
+-   Montos: `decimal:2` (monto_recibo, monto_pagado, precio_base)
+-   Fechas: `date` (fecha_emision, fecha_vencimiento)
+-   JSON: `array` (data_cliente, data_servicio, notificaciones_enviadas)
+
+## ⚙️ Convenciones del Proyecto
+
+### PHP/Laravel
+
+-   **Fechas en español:** `$cliente->created_at->format('d/m/Y')`
+-   **Estado en español:** 'Activo', 'Inactivo', 'pendiente', 'pagado', 'vencido'
+-   **NO usar Pest** - este proyecto usa PHPUnit exclusivamente
+-   **Casts en property, NO método:** Los modelos usan `protected $casts = []`
+-   **SoftDeletes:** Cliente usa `SoftDeletes` - otros modelos NO
+
+### Naming Conventions
+
+-   Campos DB: `snake_case` (nombre_cliente, fecha_vencimiento)
+-   Métodos: `camelCase` (getTelefonoPrincipal, recibosNoPagados)
+-   Scopes: `scopeNombre` (scopeActivos, scopeInactivos)
+-   Relaciones: singular/plural según tipo (cliente(), cobros())
+
+### Livewire Específico
+
+-   Props públicas para binding: `public string $nombre_cliente = '';`
+-   Métodos prefijados: `openCreateForm()`, `openEditForm()`, `openModalDelete()`
+-   Reset page on search: `updatingSearch() { $this->resetPage(); }`
+-   Usar `#[Url]` para search params persistentes
+
+## 🔧 Desarrollo
+
+### Comandos Esenciales
+
+```bash
+# Desarrollo completo (servidor + queue + vite)
+composer run dev
+
+# Tests (PHPUnit only)
+php artisan test
+php artisan test --filter=nombreTest
+php artisan test tests/Feature/ExampleTest.php
+
+# Formateo (SIEMPRE antes de commit)
+vendor/bin/pint --dirty
+
+# Queue (necesario para CreateRecibosJob)
+php artisan queue:work
+
+# Renovar placas manualmente
+php artisan cobros:renovar-placas --sync
+```
+
+### Sistema de Cobros Recurrentes
+
+El sistema soporta facturación recurrente automática:
+
+1. **RenovarCobroPlacasJob** crea nuevas CobroPlacas cuando las actuales vencen
+2. **CreateRecibosJob** genera recibos para las placas próximas a vencer
+3. Los cobros permanecen "activos" indefinidamente hasta marcarse como "procesado" manualmente
+4. Cada placa puede renovarse múltiples veces con diferentes fechas de periodo
+
+### Deployment (cPanel - Ver DEPLOYMENT.md)
+
+-   Git deploy sin terminal access
+-   Queue procesado via cron cada 5 minutos
+-   Archivos estáticos: `npm run build` genera en `public/build/`
+-   Scheduler: requiere cron job de `php artisan schedule:run`
+
+## 🚨 Puntos Críticos
+
+### WhatsApp Integration
+
+```php
+// config/whatsapp.php + .env
+WhatsAppService::sendMessage($number, $message)
+// Usado en NotifyVencimientoRecibosJob y NotifyRecibosVencidosJob
+```
+
+### Prorrateado de Montos
+
+El sistema calcula montos prorrateados para placas:
+
+```php
+// CobroPlaca
+'dias_prorrateados' => integer
+'factor_prorateo' => decimal:4
+'monto_calculado' => monto_unitario * factor_prorateo
+```
+
+### Estados de Recibos
+
+-   `pendiente` → recién generado
+-   `vencido` → fecha_vencimiento pasada
+-   `pagado` → tiene fecha_pago y monto_pagado
+-   `anulado` → tiene fecha_anulacion y motivo_anulacion
+
+### PDF Generation
+
+```php
+// app/Http/Controllers/ReciboController
+public function showPdf(Recibo $recibo) // Vista previa
+// routes/web.php
+Route::get('recibo/{uuid}', [PublicReciboController::class, 'pdf']) // Público
+```
+
+## 📝 Testing
+
+**NOTA:** Tests deben usar PHPUnit (NO Pest). Este proyecto NO tiene Pest configurado.
+
+```php
+// tests/Feature/ClienteTest.php (ejemplo esperado)
+public function test_cliente_puede_tener_multiples_telefonos(): void {
+    $cliente = Cliente::factory()->create([
+        'telefono' => '123',
+        'telefono_1' => '456',
+    ]);
+    $this->assertCount(2, $cliente->telefonos);
+}
+```
+
+## 🛠️ Laravel Boost MCP Tools
+
+-   `tinker` - Ejecutar PHP/Eloquent queries
+-   `database-query` - SQL readonly
+-   `search-docs` - Buscar docs de Laravel/Livewire/Tailwind
+-   `list-artisan-commands` - Ver comandos disponibles
+-   `browser-logs` - Ver errores frontend
+-   `get-absolute-url` - Generar URLs del proyecto
+
+---
+
 <laravel-boost-guidelines>
 === foundation rules ===
 

@@ -25,7 +25,7 @@ return new class extends Migration
             $table->foreignId('current_team_id')->nullable();
             $table->string('profile_photo_path', 2048)->nullable();
 
-            //$table->foreign('rol_id')->references('id')->on('roles')->onDelete('set null');
+            // $table->foreign('rol_id')->references('id')->on('roles')->onDelete('set null');
             $table->timestamps();
         });
 

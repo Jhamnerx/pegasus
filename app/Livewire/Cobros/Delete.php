@@ -9,6 +9,7 @@ use Livewire\Component;
 class Delete extends Component
 {
     public bool $isOpen = false;
+
     public ?Cobro $cobro = null;
 
     #[On('openDeleteModal')]
@@ -27,7 +28,7 @@ class Delete extends Component
                 $this->dispatch('cobroDeleted');
                 $this->closeModal();
             } catch (\Exception $e) {
-                session()->flash('error', 'Ha ocurrido un error al eliminar el cobro: ' . $e->getMessage());
+                session()->flash('error', 'Ha ocurrido un error al eliminar el cobro: '.$e->getMessage());
             }
         }
     }

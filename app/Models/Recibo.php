@@ -2,12 +2,12 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
-use Carbon\Carbon;
 
 class Recibo extends Model
 {
@@ -228,12 +228,14 @@ class Recibo extends Model
     public function getFechaInicioPeriodoAttribute(): ?Carbon
     {
         $fecha = $this->dataCobro['fecha_inicio_periodo'] ?? null;
+
         return $fecha ? Carbon::parse($fecha) : null;
     }
 
     public function getFechaFinPeriodoAttribute(): ?Carbon
     {
         $fecha = $this->dataCobro['fecha_fin_periodo'] ?? null;
+
         return $fecha ? Carbon::parse($fecha) : null;
     }
 
@@ -291,18 +293,18 @@ class Recibo extends Model
             'metodo_pago' => $datosPago['metodo_pago'] ?? null,
             'numero_referencia' => $datosPago['numero_referencia'] ?? null,
             'monto_pagado' => $datosPago['monto_pagado'] ?? $this->monto_recibo,
-            'observaciones' => $this->observaciones . "\nPago registrado: " . now()->format('Y-m-d H:i:s')
+            'observaciones' => $this->observaciones."\nPago registrado: ".now()->format('Y-m-d H:i:s'),
         ]);
     }
 
-    public function anular(string $motivo = null): void
+    public function anular(?string $motivo = null): void
     {
         $this->update([
             'estado_recibo' => 'anulado',
             'fecha_anulacion' => now(),
             'motivo_anulacion' => $motivo,
-            'observaciones' => $this->observaciones . "\nAnulado: " . now()->format('Y-m-d H:i:s') .
-                ($motivo ? " - Motivo: {$motivo}" : '')
+            'observaciones' => $this->observaciones."\nAnulado: ".now()->format('Y-m-d H:i:s').
+                ($motivo ? " - Motivo: {$motivo}" : ''),
         ]);
     }
 
@@ -367,12 +369,12 @@ class Recibo extends Model
         $notificaciones[] = [
             'tipo' => $tipo,
             'fecha_enviada' => $fechaEnviada->toISOString(),
-            'dias_antes_vencimiento' => $this->diasParaVencimiento
+            'dias_antes_vencimiento' => $this->diasParaVencimiento,
         ];
 
         $this->update([
             'notificaciones_enviadas' => $notificaciones,
-            'proxima_notificacion' => $this->calcularProximaNotificacion()
+            'proxima_notificacion' => $this->calcularProximaNotificacion(),
         ]);
     }
 
@@ -392,7 +394,7 @@ class Recibo extends Model
 
         foreach ($alertDays as $dias) {
             $dias = (int) $dias;
-            if (!in_array($dias, $diasEnviados)) {
+            if (! in_array($dias, $diasEnviados)) {
                 $fechaNotificacion = $this->fecha_vencimiento->subDays($dias);
                 if ($fechaNotificacion > now()) {
                     return $fechaNotificacion;
@@ -451,11 +453,11 @@ class Recibo extends Model
         $notificaciones[] = [
             'tipo' => "alerta_{$dias}_dias",
             'fecha_enviada' => now()->toISOString(),
-            'dias_antes_vencimiento' => $dias
+            'dias_antes_vencimiento' => $dias,
         ];
 
         $this->update([
-            'notificaciones_enviadas' => $notificaciones
+            'notificaciones_enviadas' => $notificaciones,
         ]);
     }
 

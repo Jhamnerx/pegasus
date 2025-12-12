@@ -121,7 +121,7 @@ class Empresa extends Component
         $logoContent = file_get_contents($this->logo->getRealPath());
         $mimeType = $this->logo->getMimeType();
 
-        return 'data:' . $mimeType . ';base64,' . base64_encode($logoContent);
+        return 'data:'.$mimeType.';base64,'.base64_encode($logoContent);
     }
 
     /**
@@ -249,7 +249,7 @@ class Empresa extends Component
             if ($enviado) {
                 $this->notification()->success(
                     'Mensaje enviado',
-                    'El mensaje de prueba se envió correctamente a ' . $this->numeroWhatsapp
+                    'El mensaje de prueba se envió correctamente a '.$this->numeroWhatsapp
                 );
                 $this->cerrarModalWhatsapp();
             } else {
@@ -261,7 +261,7 @@ class Empresa extends Component
         } catch (\Exception $e) {
             $this->notification()->error(
                 'Error inesperado',
-                'Ocurrió un error al intentar enviar el mensaje: ' . $e->getMessage()
+                'Ocurrió un error al intentar enviar el mensaje: '.$e->getMessage()
             );
         }
     }

@@ -17,14 +17,14 @@ class CheckInstallation
     public function handle(Request $request, Closure $next): Response
     {
         // Verificar si la aplicación está instalada
-        if (!$this->isInstalled()) {
+        if (! $this->isInstalled()) {
             // Si la ruta actual NO es de instalación, redirigir
-            if (!$request->is('install*')) {
+            if (! $request->is('install*')) {
                 return redirect()->route('install.index');
             }
         } else {
             // Si ya está instalada y trata de acceder a install, redirigir al dashboard
-            if ($request->is('install') && !$request->is('install/system-info')) {
+            if ($request->is('install') && ! $request->is('install/system-info')) {
                 return redirect()->route('dashboard.index');
             }
         }

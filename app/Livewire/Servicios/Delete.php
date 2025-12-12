@@ -9,6 +9,7 @@ use Livewire\Component;
 class Delete extends Component
 {
     public bool $isOpen = false;
+
     public ?Servicio $servicio = null;
 
     #[On('openDeleteModal')]
@@ -26,6 +27,7 @@ class Delete extends Component
                 if ($this->servicio->cobros()->exists()) {
                     session()->flash('error', 'No se puede eliminar el servicio porque tiene cobros asociados.');
                     $this->closeModal();
+
                     return;
                 }
 

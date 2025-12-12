@@ -57,6 +57,8 @@
                             </td>
                             <td class="px-6 py-4">
                                 <div class="flex items-center space-x-2">
+                                    <x-button xs info icon="currency-dollar" title="Ver deudas"
+                                        wire:click="openDeudaModal({{ $cliente->id }})" />
                                     <x-button xs warning icon="pencil" title="Editar cliente"
                                         wire:click="openEditForm({{ $cliente->id }})" />
                                     <x-button xs negative icon="trash" title="Eliminar cliente"
@@ -90,5 +92,6 @@
     <!-- Componentes Livewire -->
     @livewire('clientes.form')
     @livewire('clientes.delete')
+    @livewire('clientes.deuda-cliente')
 
 </div>

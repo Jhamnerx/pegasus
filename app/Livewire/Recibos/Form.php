@@ -2,15 +2,14 @@
 
 namespace App\Livewire\Recibos;
 
-use App\Models\Recibo;
-use App\Models\Cobro;
 use App\Models\Cliente;
+use App\Models\Cobro;
+use App\Models\Recibo;
 use App\Models\Servicio;
-use Livewire\Component;
-use Livewire\Attributes\On;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
-use Carbon\Carbon;
+use Livewire\Attributes\On;
+use Livewire\Component;
 use WireUi\Traits\WireUiActions;
 
 class Form extends Component
@@ -18,37 +17,54 @@ class Form extends Component
     use WireUiActions;
 
     public bool $isOpen = false;
+
     public ?Recibo $recibo = null;
+
     public bool $isEditing = false;
 
     // Campos principales
     public string $numero_recibo = '';
+
     public ?int $cobro_id = null;
+
     public ?int $cliente_id = null;
+
     public ?int $servicio_id = null;
+
     public string $monto_recibo = '';
+
     public string $fecha_emision = '';
+
     public string $fecha_vencimiento = '';
+
     public string $estado_recibo = 'pendiente';
 
     // Campos de pago
     public string $fecha_pago = '';
+
     public string $metodo_pago = '';
+
     public string $numero_referencia = '';
+
     public string $monto_pagado = '';
 
     // Campos adicionales
     public string $observaciones = '';
+
     public string $moneda = 'PEN';
 
     // Datos de solo lectura extraídos de las relaciones
     public array $dataCliente = [];
+
     public array $dataServicio = [];
+
     public array $dataCobro = [];
 
     // Colecciones para selects
     public Collection $cobros;
+
     public Collection $clientes;
+
     public Collection $servicios;
 
     protected array $rules = [
@@ -113,7 +129,7 @@ class Form extends Component
             'monedasDisponibles' => [
                 'PEN' => 'Soles (PEN)',
                 'USD' => 'Dólares (USD)',
-            ]
+            ],
         ]);
     }
 
@@ -306,6 +322,7 @@ class Form extends Component
     {
         $lastRecibo = Recibo::orderBy('numero_recibo', 'desc')->first();
         $nextNumber = $lastRecibo ? intval($lastRecibo->numero_recibo) + 1 : 1;
+
         return str_pad($nextNumber, 8, '0', STR_PAD_LEFT);
     }
 
@@ -352,7 +369,7 @@ class Form extends Component
             $this->closeModal();
             $this->dispatch('refresh-recibos-list');
         } catch (\Exception $e) {
-            $this->notification()->error('Error', 'Error al guardar el recibo: ' . $e->getMessage());
+            $this->notification()->error('Error', 'Error al guardar el recibo: '.$e->getMessage());
         }
     }
 

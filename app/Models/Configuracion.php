@@ -51,6 +51,7 @@ class Configuracion extends Model
     public static function obtenerLogo(): ?string
     {
         $configuracion = self::first();
+
         return $configuracion?->logo;
     }
 
@@ -60,6 +61,7 @@ class Configuracion extends Model
     public static function obtenerRazonSocial(): string
     {
         $configuracion = self::first();
+
         return $configuracion?->razon_social ?? config('app.name', 'PEGASUS');
     }
 }

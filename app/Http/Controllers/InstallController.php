@@ -189,7 +189,7 @@ class InstallController extends Controller
             'status' => empty($missing) ? 'success' : 'error',
             'message' => empty($missing)
                 ? 'Todos los requisitos están satisfechos'
-                : 'Faltan requisitos: ' . implode(', ', $missing),
+                : 'Faltan requisitos: '.implode(', ', $missing),
             'details' => $requirements,
         ];
     }
@@ -254,7 +254,7 @@ class InstallController extends Controller
                 'message' => 'Conexión a base de datos exitosa',
             ];
         } catch (Exception $e) {
-            throw new Exception('Error conectando a la base de datos: ' . $e->getMessage());
+            throw new Exception('Error conectando a la base de datos: '.$e->getMessage());
         }
     }
 
@@ -274,7 +274,7 @@ class InstallController extends Controller
                 'details' => $output,
             ];
         } catch (Exception $e) {
-            throw new Exception('Error ejecutando migraciones: ' . $e->getMessage());
+            throw new Exception('Error ejecutando migraciones: '.$e->getMessage());
         }
     }
 
@@ -306,7 +306,7 @@ class InstallController extends Controller
                 'details' => $output,
             ];
         } catch (Exception $e) {
-            throw new Exception('Error ejecutando seeders: ' . $e->getMessage());
+            throw new Exception('Error ejecutando seeders: '.$e->getMessage());
         }
     }
 
@@ -350,7 +350,7 @@ class InstallController extends Controller
             return [
                 'name' => 'Configurar sesiones de base de datos',
                 'status' => 'warning',
-                'message' => 'No se pudo cambiar SESSION_DRIVER: ' . $e->getMessage(),
+                'message' => 'No se pudo cambiar SESSION_DRIVER: '.$e->getMessage(),
             ];
         }
     }
@@ -378,7 +378,7 @@ class InstallController extends Controller
             return [
                 'name' => 'Crear enlace simbólico de storage',
                 'status' => 'warning',
-                'message' => 'No se pudo crear enlace simbólico: ' . $e->getMessage(),
+                'message' => 'No se pudo crear enlace simbólico: '.$e->getMessage(),
             ];
         }
     }
@@ -402,7 +402,7 @@ class InstallController extends Controller
             return [
                 'name' => 'Optimizar aplicación',
                 'status' => 'warning',
-                'message' => 'Optimización parcial: ' . $e->getMessage(),
+                'message' => 'Optimización parcial: '.$e->getMessage(),
             ];
         }
     }
@@ -449,7 +449,7 @@ class InstallController extends Controller
             return [
                 'name' => 'Limpiar cache de vistas',
                 'status' => 'warning',
-                'message' => 'Error limpiando cache de vistas: ' . $e->getMessage(),
+                'message' => 'Error limpiando cache de vistas: '.$e->getMessage(),
             ];
         }
     }
@@ -474,7 +474,7 @@ class InstallController extends Controller
             return [
                 'name' => 'Regenerar cache de configuración',
                 'status' => 'warning',
-                'message' => 'Error regenerando cache de configuración: ' . $e->getMessage(),
+                'message' => 'Error regenerando cache de configuración: '.$e->getMessage(),
             ];
         }
     }
