@@ -577,8 +577,8 @@ chown -R apache:apache /var/lib/phpmyadmin
 
 # Configurar phpMyAdmin
 cp /usr/share/phpmyadmin/config.sample.inc.php /usr/share/phpmyadmin/config.inc.php
-BLOWFISH_SECRET=$(openssl rand -base64 32)
-sed -i "s/\$cfg\['blowfish_secret'\] = '';/\$cfg['blowfish_secret'] = '${BLOWFISH_SECRET}';/" /usr/share/phpmyadmin/config.inc.php
+BLOWFISH_SECRET=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-32)
+sed -i "s|\$cfg\['blowfish_secret'\] = '';|\$cfg['blowfish_secret'] = '${BLOWFISH_SECRET}';|" /usr/share/phpmyadmin/config.inc.php
 echo "\$cfg['TempDir'] = '/usr/share/phpmyadmin/tmp';" >> /usr/share/phpmyadmin/config.inc.php
 
 # Configurar acceso seguro a phpMyAdmin
