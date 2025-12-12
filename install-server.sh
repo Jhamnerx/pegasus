@@ -561,13 +561,30 @@ print_success "Supervisor configurado y ejecutándose"
 
 print_info "Instalando phpMyAdmin..."
 
-# Descargar phpMyAdmin
-PHPMYADMIN_VERSION="5.2.1"
-cd /tmp
-wget -q https://files.phpmyadmin.net/phpMyAdmin/${PHPMYADMIN_VERSION}/phpMyAdmin-${PHPMYADMIN_VERSION}-all-languages.tar.gz
-tar -xzf phpMyAdmin-${PHPMYADMIN_VERSION}-all-languages.tar.gz
-mv phpMyAdmin-${PHPMYADMIN_VERSION}-all-languages /usr/share/phpmyadmin
-rm -f phpMyAdmin-${PHPMYADMIN_VERSION}-all-languages.tar.gz
+# Verificar si phpMyAdmin ya está instalado
+if [[ -d /usr/share/phpmyadmin ]] && [[ -f /usr/share/phpmyadmin/index.php ]]; then
+    print_info "phpMyAdmin ya está instalado, omitiendo instalación..."
+else
+    # Descargar phpMyAdmin
+    PHPMYADMIN_VERSION="5.2.1"
+    cd /tmp
+    
+    # Limpiar instalaciones previas incompletas
+    rm -rf phpMyAdmin-${PHPMYADMIN_VERSION}-all-languages
+    rm -f phpMyAdmin-${PHPMYADMIN_VERSION}-all-languages.tar.gz
+    
+    wget -q https://files.phpmyadmin.net/phpMyAdmin/${PHPMYADMIN_VERSION}/phpMyAdmin-${PHPMYADMIN_VERSION}-all-languages.tar.gz
+    tar -xzf phpMyAdmin-${PHPMYADMIN_VERSION}-all-languages.tar.gz
+    
+    # Crear backup si existe instalación previa
+    if [[ -d /usr/share/phpmyadmin ]]; then
+        print_warning "Respaldando phpMyAdmin existente..."
+        mv /usr/share/phpmyadmin /usr/share/phpmyadmin.backup.$(date +%Y%m%d_%H%M%S)
+    fi
+    
+    mv phpMyAdmin-${PHPMYADMIN_VERSION}-all-languages /usr/share/phpmyadmin
+    rm -f phpMyAdmin-${PHPMYADMIN_VERSION}-all-languages.tar.gz
+fi
 
 # Crear directorio de configuración
 mkdir -p /usr/share/phpmyadmin/tmp
@@ -575,11 +592,16 @@ chmod 777 /usr/share/phpmyadmin/tmp
 mkdir -p /var/lib/phpmyadmin/tmp
 chown -R apache:apache /var/lib/phpmyadmin
 
-# Configurar phpMyAdmin
-cp /usr/share/phpmyadmin/config.sample.inc.php /usr/share/phpmyadmin/config.inc.php
-BLOWFISH_SECRET=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-32)
-sed -i "s|\$cfg\['blowfish_secret'\] = '';|\$cfg['blowfish_secret'] = '${BLOWFISH_SECRET}';|" /usr/share/phpmyadmin/config.inc.php
-echo "\$cfg['TempDir'] = '/usr/share/phpmyadmin/tmp';" >> /usr/share/phpmyadmin/config.inc.php
+# Configurar phpMyAdmin si no está configurado
+if [[ ! -f /usr/share/phpmyadmin/config.inc.php ]]; then
+    print_info "Configurando phpMyAdmin..."
+    cp /usr/share/phpmyadmin/config.sample.inc.php /usr/share/phpmyadmin/config.inc.php
+    BLOWFISH_SECRET=$(openssl rand -base64 32 | tr -d "=+/" | cut -c1-32)
+    sed -i "s|\$cfg\['blowfish_secret'\] = '';|\$cfg['blowfish_secret'] = '${BLOWFISH_SECRET}';|" /usr/share/phpmyadmin/config.inc.php
+    echo "\$cfg['TempDir'] = '/usr/share/phpmyadmin/tmp';" >> /usr/share/phpmyadmin/config.inc.php
+else
+    print_info "phpMyAdmin ya está configurado"
+fi
 
 # Configurar acceso seguro a phpMyAdmin
 PHPMYADMIN_ALIAS="/pma-$(openssl rand -hex 8)"
