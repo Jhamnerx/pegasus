@@ -247,12 +247,46 @@ print_info "Configurando MySQL..."
 systemctl start mysqld
 systemctl enable mysqld
 
-# Configurar contraseña root
-mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${MYSQL_ROOT_PASSWORD}';" 2>/dev/null || true
-mysql -u root -p"${MYSQL_ROOT_PASSWORD}" -e "DELETE FROM mysql.user WHERE User='';" 2>/dev/null
-mysql -u root -p"${MYSQL_ROOT_PASSWORD}" -e "DROP DATABASE IF EXISTS test;" 2>/dev/null
-mysql -u root -p"${MYSQL_ROOT_PASSWORD}" -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';" 2>/dev/null
-mysql -u root -p"${MYSQL_ROOT_PASSWORD}" -e "FLUSH PRIVILEGES;" 2>/dev/null
+# Verificar si MySQL ya tiene contraseña configurada
+print_info "Verificando configuración de MySQL..."
+MYSQL_CONFIGURED=false
+
+# Intentar conectar sin contraseña
+if mysql -u root -e "SELECT 1;" 2>/dev/null; then
+    print_info "MySQL sin contraseña, configurando..."
+    # Configurar contraseña root
+    mysql -u root <<EOF
+ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${MYSQL_ROOT_PASSWORD}';
+DELETE FROM mysql.user WHERE User='';
+DROP DATABASE IF EXISTS test;
+DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';
+FLUSH PRIVILEGES;
+EOF
+    MYSQL_CONFIGURED=true
+    print_success "Contraseña root configurada"
+elif mysql -u root -p"${MYSQL_ROOT_PASSWORD}" -e "SELECT 1;" 2>/dev/null; then
+    print_info "MySQL ya tiene contraseña configurada (reutilizando)"
+    MYSQL_CONFIGURED=true
+else
+    print_warning "No se pudo conectar a MySQL con las credenciales esperadas"
+    print_warning "Puede que MySQL ya tenga una contraseña diferente"
+    read -p "¿Conoces la contraseña actual de root? (y/n): " KNOW_PASSWORD
+    if [[ "$KNOW_PASSWORD" == "y" || "$KNOW_PASSWORD" == "Y" ]]; then
+        read -sp "Ingresa la contraseña actual de root: " CURRENT_MYSQL_PASSWORD
+        echo ""
+        if mysql -u root -p"${CURRENT_MYSQL_PASSWORD}" -e "SELECT 1;" 2>/dev/null; then
+            MYSQL_ROOT_PASSWORD="$CURRENT_MYSQL_PASSWORD"
+            MYSQL_CONFIGURED=true
+            print_success "Conectado con contraseña existente"
+        else
+            print_error "Contraseña incorrecta"
+            exit 1
+        fi
+    else
+        print_error "No se puede continuar sin acceso a MySQL"
+        exit 1
+    fi
+fi
 
 # Crear base de datos y usuario
 print_info "Creando base de datos y usuario..."
