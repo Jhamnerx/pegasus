@@ -294,6 +294,7 @@ class Recibo extends Model
             'numero_referencia' => $datosPago['numero_referencia'] ?? null,
             'monto_pagado' => $datosPago['monto_pagado'] ?? $this->monto_recibo,
             'observaciones' => $this->observaciones."\nPago registrado: ".now()->format('Y-m-d H:i:s'),
+            'proxima_notificacion' => null, // Cancelar notificaciones futuras
         ]);
     }
 

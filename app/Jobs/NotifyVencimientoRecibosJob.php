@@ -27,13 +27,14 @@ class NotifyVencimientoRecibosJob implements ShouldQueue
     {
         try {
             $hoy = Carbon::now();
-            Log::info('NotifyVencimientoRecibosJob ejecutándose: '.$hoy->toDateTimeString());
+            Log::info('NotifyVencimientoRecibosJob ejecutándose: ' . $hoy->toDateTimeString());
 
-            // Buscar recibos que necesitan notificación hoy
+            // Buscar recibos que necesitan notificación hoy (solo pendientes, no pagados ni anulados)
             $recibosPendientes = Recibo::with('cliente')
                 ->where('estado_recibo', 'pendiente')
                 ->whereDate('proxima_notificacion', '<=', $hoy->toDateString())
                 ->whereNotNull('data_cliente')
+                ->whereNull('fecha_pago') // Excluir recibos ya pagados
                 ->get()
                 ->filter(function ($recibo) {
                     // Verificar que tenga al menos un teléfono (en data_cliente o en el cliente)
@@ -43,7 +44,7 @@ class NotifyVencimientoRecibosJob implements ShouldQueue
                     return ! empty($telefonoDataCliente) || ($cliente && $cliente->tieneTelefono());
                 });
 
-            Log::info('Recibos encontrados para notificar: '.$recibosPendientes->count());
+            Log::info('Recibos encontrados para notificar: ' . $recibosPendientes->count());
 
             $notificacionesEnviadas = 0;
 
@@ -55,7 +56,7 @@ class NotifyVencimientoRecibosJob implements ShouldQueue
 
                     Log::info("Notificación enviada para recibo: {$recibo->numero_recibo}");
                 } catch (\Exception $e) {
-                    Log::error("Error enviando notificación para recibo {$recibo->numero_recibo}: ".$e->getMessage());
+                    Log::error("Error enviando notificación para recibo {$recibo->numero_recibo}: " . $e->getMessage());
                 }
             }
 
@@ -64,7 +65,7 @@ class NotifyVencimientoRecibosJob implements ShouldQueue
 
             Log::info("NotifyVencimientoRecibosJob completado. Notificaciones enviadas: {$notificacionesEnviadas}");
         } catch (\Exception $e) {
-            Log::error('Error en NotifyVencimientoRecibosJob: '.$e->getMessage());
+            Log::error('Error en NotifyVencimientoRecibosJob: ' . $e->getMessage());
             throw $e;
         }
     }
@@ -115,7 +116,7 @@ class NotifyVencimientoRecibosJob implements ShouldQueue
                     Log::warning("Error enviando mensaje de vencimiento a {$telefono} para recibo {$recibo->numero_recibo}");
                 }
             } catch (\Exception $e) {
-                Log::error("Excepción enviando mensaje a {$telefono}: ".$e->getMessage());
+                Log::error("Excepción enviando mensaje a {$telefono}: " . $e->getMessage());
             }
         }
 
@@ -190,7 +191,7 @@ class NotifyVencimientoRecibosJob implements ShouldQueue
             $mensaje .= "📄 *Recibo:* {$recibo->numero_recibo}\n";
             $mensaje .= "🚗 *Placa:* {$placa}\n";
             $mensaje .= "🛠️ *Servicio:* {$servicioNombre}\n";
-            $mensaje .= "💰 *Monto:* {$recibo->moneda} ".number_format($recibo->monto_recibo, 2)."\n";
+            $mensaje .= "💰 *Monto:* {$recibo->moneda} " . number_format($recibo->monto_recibo, 2) . "\n";
             $mensaje .= "📅 *Período:* {$periodoFacturacion}\n";
             $mensaje .= "⏰ *{$diasTexto}*\n\n";
 
@@ -243,7 +244,7 @@ class NotifyVencimientoRecibosJob implements ShouldQueue
     private function actualizarProximaNotificacion(Recibo $recibo): void
     {
         $alertDays = explode(',', env('ALERT_DAYS', '7,3,1'));
-        $diasOrdenados = collect($alertDays)->map(fn ($d) => (int) $d)->sort()->reverse()->values();
+        $diasOrdenados = collect($alertDays)->map(fn($d) => (int) $d)->sort()->reverse()->values();
 
         $fechaVencimiento = Carbon::parse($recibo->fecha_vencimiento);
         $hoy = Carbon::now();
