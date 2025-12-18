@@ -292,7 +292,11 @@ class Index extends Component
                 $q->where('numero_recibo', 'like', '%' . $this->search . '%')
                     ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(data_cliente, '$.nombre_cliente')) LIKE ?", ['%' . $this->search . '%'])
                     ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(data_cliente, '$.ruc_dni')) LIKE ?", ['%' . $this->search . '%'])
-                    ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(data_cobro, '$.placa')) LIKE ?", ['%' . $this->search . '%']);
+                    ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(data_cobro, '$.placa')) LIKE ?", ['%' . $this->search . '%'])
+                    ->orWhereHas('cliente', function ($clienteQuery) {
+                        $clienteQuery->where('nombre_cliente', 'like', '%' . $this->search . '%')
+                            ->orWhere('ruc_dni', 'like', '%' . $this->search . '%');
+                    });
             });
         }
 

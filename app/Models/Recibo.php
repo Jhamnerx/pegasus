@@ -293,7 +293,7 @@ class Recibo extends Model
             'metodo_pago' => $datosPago['metodo_pago'] ?? null,
             'numero_referencia' => $datosPago['numero_referencia'] ?? null,
             'monto_pagado' => $datosPago['monto_pagado'] ?? $this->monto_recibo,
-            'observaciones' => $this->observaciones."\nPago registrado: ".now()->format('Y-m-d H:i:s'),
+            'observaciones' => $this->observaciones . "\nPago registrado: " . now()->format('Y-m-d H:i:s'),
             'proxima_notificacion' => null, // Cancelar notificaciones futuras
         ]);
     }
@@ -304,7 +304,7 @@ class Recibo extends Model
             'estado_recibo' => 'anulado',
             'fecha_anulacion' => now(),
             'motivo_anulacion' => $motivo,
-            'observaciones' => $this->observaciones."\nAnulado: ".now()->format('Y-m-d H:i:s').
+            'observaciones' => $this->observaciones . "\nAnulado: " . now()->format('Y-m-d H:i:s') .
                 ($motivo ? " - Motivo: {$motivo}" : ''),
         ]);
     }

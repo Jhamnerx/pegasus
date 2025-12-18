@@ -46,7 +46,7 @@ class NotifyRecibosVencidosJob implements ShouldQueue
                     // Verificar si ya se envió notificación de vencido HOY
                     $notificaciones = $recibo->notificaciones_enviadas ?? [];
                     $hoyStr = Carbon::now()->toDateString();
-                    
+
                     foreach ($notificaciones as $notif) {
                         if ($notif['tipo'] === 'recibo_vencido') {
                             $fechaEnvio = Carbon::parse($notif['fecha_enviada'])->toDateString();
