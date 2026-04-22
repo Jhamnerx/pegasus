@@ -57,7 +57,7 @@ class SendNotificationRecibos extends Command
 
             return self::SUCCESS;
         } catch (\Exception $e) {
-            $this->error('Error al enviar notificaciones: '.$e->getMessage());
+            $this->error('Error al enviar notificaciones: ' . $e->getMessage());
 
             return self::FAILURE;
         }

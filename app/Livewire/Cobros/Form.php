@@ -196,12 +196,14 @@ class Form extends Component
             $this->estado = $this->cobro->estado;
             $this->notas = $this->cobro->notas ?? '';
 
-            // Cargar las placas existentes
+            // Cargar las placas existentes con sus valores reales de prorrateo
             $this->placas = collect($this->cobro->cobroPlacas->map(function ($cobroPlaca) {
                 return [
                     'id' => $cobroPlaca->id,
                     'placa' => $cobroPlaca->placa,
-                    'monto_calculado' => (float) $this->monto_base, // Usar monto fijo
+                    'monto_calculado' => (float) $cobroPlaca->monto_calculado,
+                    'factor_prorateo' => (float) ($cobroPlaca->factor_prorateo ?? 1.0),
+                    'dias_prorrateados' => $cobroPlaca->dias_prorrateados,
                     'fecha_inicio' => $cobroPlaca->fecha_inicio ? $cobroPlaca->fecha_inicio->format('d-m-Y') : '',
                     'fecha_fin' => $cobroPlaca->fecha_fin ? $cobroPlaca->fecha_fin->format('d-m-Y') : '',
                 ];
@@ -370,6 +372,9 @@ class Form extends Component
                 'dias_para_vencimiento' => $this->dias_para_vencimiento,
                 'estado' => $this->estado,
                 'notas' => $this->notas,
+                'tiene_prorateo' => $this->tieneplacasReales()
+                    ? $this->placas->contains(fn ($p) => isset($p['factor_prorateo']) && (float) $p['factor_prorateo'] < 1.0)
+                    : false,
             ];
 
             if ($this->isEditing && $this->cobro) {
@@ -419,7 +424,9 @@ class Form extends Component
             foreach ($this->placas as $placaData) {
                 $cobro->cobroPlacas()->create([
                     'placa' => $placaData['placa'],
-                    'monto_calculado' => $this->monto_base, // Usar monto fijo
+                    'monto_calculado' => $placaData['monto_calculado'] ?? $this->monto_base,
+                    'factor_prorateo' => $placaData['factor_prorateo'] ?? 1.0,
+                    'dias_prorrateados' => $placaData['dias_prorrateados'] ?? null,
                     'fecha_inicio' => isset($placaData['fecha_inicio']) && $placaData['fecha_inicio'] ? Carbon::createFromFormat('d-m-Y', $placaData['fecha_inicio'])->format('Y-m-d') : null,
                     'fecha_fin' => isset($placaData['fecha_fin']) && $placaData['fecha_fin'] ? Carbon::createFromFormat('d-m-Y', $placaData['fecha_fin'])->format('Y-m-d') : null,
                 ]);
@@ -439,7 +446,9 @@ class Form extends Component
                 // Actualizar placa existente
                 $cobro->cobroPlacas()->where('id', $placaData['id'])->update([
                     'placa' => $placaData['placa'],
-                    'monto_calculado' => $this->monto_base, // Usar monto fijo
+                    'monto_calculado' => $placaData['monto_calculado'] ?? $this->monto_base,
+                    'factor_prorateo' => $placaData['factor_prorateo'] ?? 1.0,
+                    'dias_prorrateados' => $placaData['dias_prorrateados'] ?? null,
                     'fecha_inicio' => isset($placaData['fecha_inicio']) && $placaData['fecha_inicio'] ? Carbon::createFromFormat('d-m-Y', $placaData['fecha_inicio'])->format('Y-m-d') : null,
                     'fecha_fin' => isset($placaData['fecha_fin']) && $placaData['fecha_fin'] ? Carbon::createFromFormat('d-m-Y', $placaData['fecha_fin'])->format('Y-m-d') : null,
                 ]);
@@ -447,7 +456,9 @@ class Form extends Component
                 // Crear nueva placa
                 $cobro->cobroPlacas()->create([
                     'placa' => $placaData['placa'],
-                    'monto_calculado' => $this->monto_base, // Usar monto fijo
+                    'monto_calculado' => $placaData['monto_calculado'] ?? $this->monto_base,
+                    'factor_prorateo' => $placaData['factor_prorateo'] ?? 1.0,
+                    'dias_prorrateados' => $placaData['dias_prorrateados'] ?? null,
                     'fecha_inicio' => isset($placaData['fecha_inicio']) && $placaData['fecha_inicio'] ? Carbon::createFromFormat('d-m-Y', $placaData['fecha_inicio'])->format('Y-m-d') : null,
                     'fecha_fin' => isset($placaData['fecha_fin']) && $placaData['fecha_fin'] ? Carbon::createFromFormat('d-m-Y', $placaData['fecha_fin'])->format('Y-m-d') : null,
                 ]);
@@ -526,16 +537,42 @@ class Form extends Component
             return;
         }
 
-        $montoBase = (float) ($this->monto_base ?: 0);
+        // Detectar si estamos a mitad del período para aplicar prorrateo automático
+        $fechaInicioPlaca = $this->fecha_inicio_periodo;
+        $esMidPeriod = false;
 
-        // Agregar placa con estructura completa y correcta
-        $this->placas->push([
+        if ($this->fecha_inicio_periodo && $this->fecha_fin_periodo) {
+            try {
+                $inicioPeriodo = Carbon::createFromFormat('d-m-Y', $this->fecha_inicio_periodo);
+                $finPeriodo = Carbon::createFromFormat('d-m-Y', $this->fecha_fin_periodo);
+                $hoy = Carbon::today();
+
+                if ($hoy->greaterThan($inicioPeriodo) && $hoy->lessThanOrEqualTo($finPeriodo)) {
+                    $fechaInicioPlaca = $hoy->format('d-m-Y');
+                    $esMidPeriod = true;
+                }
+            } catch (\Exception) {
+                // Usar fechas por defecto
+            }
+        }
+
+        $nuevaPlacaData = [
             'id' => null,
             'placa' => strtoupper($this->nueva_placa),
-            'fecha_inicio' => $this->fecha_inicio_periodo,
+            'fecha_inicio' => $fechaInicioPlaca,
             'fecha_fin' => $this->fecha_fin_periodo,
-            'monto_calculado' => $montoBase,
-        ]);
+            'monto_calculado' => (float) ($this->monto_base ?: 0),
+            'factor_prorateo' => 1.0,
+            'dias_prorrateados' => null,
+        ];
+
+        // Calcular prorrateo según fechas
+        $prorrateo = $this->calcularProrrateoParaPlaca($nuevaPlacaData);
+        $nuevaPlacaData['monto_calculado'] = $prorrateo['monto_calculado'];
+        $nuevaPlacaData['factor_prorateo'] = $prorrateo['factor_prorateo'];
+        $nuevaPlacaData['dias_prorrateados'] = $prorrateo['dias_prorrateados'];
+
+        $this->placas->push($nuevaPlacaData);
 
         $this->nueva_placa = '';
         $this->limpiarColeccionPlacas();
@@ -543,10 +580,17 @@ class Form extends Component
         $this->calcularMontoTotal();
         $this->resetErrorBag('nueva_placa');
 
-        $this->notification()->success(
-            'Placa agregada',
-            'La placa ha sido agregada correctamente.'
-        );
+        if ($esMidPeriod && ($prorrateo['factor_prorateo'] < 1.0)) {
+            $this->notification()->success(
+                'Placa agregada con prorrateo',
+                "{$nuevaPlacaData['placa']}: {$prorrateo['dias_prorrateados']} días restantes del período · {$this->moneda} ".number_format($prorrateo['monto_calculado'], 2)
+            );
+        } else {
+            $this->notification()->success(
+                'Placa agregada',
+                'La placa ha sido agregada correctamente.'
+            );
+        }
     }
 
     public function removerPlaca(int $index): void
@@ -577,25 +621,70 @@ class Form extends Component
         })->count() > 0;
     }
 
+    /**
+     * Calcula el prorrateo para una placa basado en sus fechas vs el período del cobro.
+     * Si la placa cubre menos días que el período completo, se prorratea el monto.
+     */
+    private function calcularProrrateoParaPlaca(array $placaData): array
+    {
+        $montoBase = (float) $this->monto_base;
+
+        if (
+            empty($placaData['fecha_inicio']) ||
+            empty($placaData['fecha_fin']) ||
+            empty($this->fecha_inicio_periodo) ||
+            empty($this->fecha_fin_periodo)
+        ) {
+            return ['monto_calculado' => $montoBase, 'dias_prorrateados' => null, 'factor_prorateo' => 1.0];
+        }
+
+        try {
+            $inicioCobro = Carbon::createFromFormat('d-m-Y', $this->fecha_inicio_periodo);
+            $finCobro = Carbon::createFromFormat('d-m-Y', $this->fecha_fin_periodo);
+            $inicioPlaca = Carbon::createFromFormat('d-m-Y', $placaData['fecha_inicio']);
+            $finPlaca = Carbon::createFromFormat('d-m-Y', $placaData['fecha_fin']);
+        } catch (\Exception) {
+            return ['monto_calculado' => $montoBase, 'dias_prorrateados' => null, 'factor_prorateo' => 1.0];
+        }
+
+        $diasTotalesPeriodo = $inicioCobro->diffInDays($finCobro) + 1;
+        $diasPlaca = $inicioPlaca->diffInDays($finPlaca) + 1;
+
+        // Sin prorrateo si cubre el período completo
+        if ($diasPlaca >= $diasTotalesPeriodo) {
+            return ['monto_calculado' => $montoBase, 'dias_prorrateados' => $diasPlaca, 'factor_prorateo' => 1.0];
+        }
+
+        $factorProrateo = round($diasPlaca / $diasTotalesPeriodo, 4);
+        $montoCalculado = round($montoBase * $factorProrateo, 2);
+
+        return [
+            'monto_calculado' => $montoCalculado,
+            'dias_prorrateados' => $diasPlaca,
+            'factor_prorateo' => $factorProrateo,
+        ];
+    }
+
     private function calcularMontoTotal(): void
     {
         $total = 0;
-        $montoBase = $this->monto_base;
 
         if ($this->tieneplacasReales()) {
-            // Si hay placas específicas reales, usar monto fijo por placa
-            $this->placas = $this->placas->map(function ($placa) use (&$total, $montoBase) {
-                // Solo procesar placas válidas
+            // Calcular monto con prorrateo según fechas de cada placa
+            $this->placas = $this->placas->map(function ($placa) use (&$total) {
                 if (isset($placa['placa']) && ! empty($placa['placa'])) {
-                    $placa['monto_calculado'] = $montoBase;
-                    $total += $montoBase;
+                    $prorrateo = $this->calcularProrrateoParaPlaca($placa);
+                    $placa['monto_calculado'] = $prorrateo['monto_calculado'];
+                    $placa['factor_prorateo'] = $prorrateo['factor_prorateo'];
+                    $placa['dias_prorrateados'] = $prorrateo['dias_prorrateados'];
+                    $total += $prorrateo['monto_calculado'];
                 }
 
                 return $placa;
             });
         } else {
-            // Si no hay placas específicas, usar la cantidad de placas genérica
-            $total = $montoBase * $this->cantidad_placas;
+            // Sin placas específicas, usar cantidad genérica sin prorrateo
+            $total = $this->monto_base * $this->cantidad_placas;
         }
 
         $this->monto_total_calculado = round($total, 2);
@@ -631,7 +720,15 @@ class Form extends Component
             // Validar fechas de esta placa específica
             $this->validarFechaPlacaEspecifica($index);
 
-            // Recalcular montos
+            // Recalcular prorrateo y monto para esta placa
+            $placa = $this->placas[$index];
+            $prorrateo = $this->calcularProrrateoParaPlaca($placa);
+            $placa['monto_calculado'] = $prorrateo['monto_calculado'];
+            $placa['factor_prorateo'] = $prorrateo['factor_prorateo'];
+            $placa['dias_prorrateados'] = $prorrateo['dias_prorrateados'];
+            $this->placas[$index] = $placa;
+
+            // Recalcular total
             $this->calcularMontoTotal();
         }
     }

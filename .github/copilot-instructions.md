@@ -20,29 +20,70 @@ El sistema maneja un flujo de facturación recurrente basado en placas vehicular
 
 ### Entidades Principales
 
--   `Cliente`: Gestión de clientes con hasta 4 teléfonos (WhatsApp)
--   `Servicio`: Catálogo de servicios GPS con precio base
--   `Cobro`: Configuración de facturación (periodo, prorrateado, moneda)
--   `CobroPlaca`: Placas vehiculares individuales con fechas y monto calculado
--   `Recibo`: Documento de cobro generado (estados: pendiente, pagado, vencido, anulado)
--   `Configuracion`: Settings globales de la empresa
+- `Cliente`: Gestión de clientes con hasta 4 teléfonos (WhatsApp)
+- `Servicio`: Catálogo de servicios GPS con precio base
+- `Cobro`: Configuración de facturación (periodo, prorrateado, moneda)
+- `CobroPlaca`: Placas vehiculares individuales con fechas y monto calculado
+- `Recibo`: Documento de cobro generado (estados: pendiente, pagado, vencido, anulado)
+    - Tracking de notificaciones vía campo JSON `notificaciones_enviadas`
+    - Campo `proxima_notificacion` para programar siguiente alerta
+    - Snapshots JSON de cliente/servicio/cobro para datos históricos
+- `ReciboDetalle`: Detalles por placa de cada recibo
+- `PlantillaMensaje`: Plantillas de mensajes WhatsApp personalizables (tipos: creacion_recibo, recordatorio_pago, recibo_vencido)
+- `Configuracion`: Settings globales de la empresa
 
 ### Jobs Críticos (Queue)
 
 ```php
 // bootstrap/app.php - Scheduled daily
 RenovarCobroPlacasJob       // 08:00 AM - Renueva placas vencidas para cobros recurrentes
-CreateRecibosJob            // 09:00 AM - Genera recibos para placas que vencen
-NotifyVencimientoRecibosJob // 09:30 AM - Notifica recibos próximos a vencer
-NotifyRecibosVencidosJob    // 09:30 AM - Notifica recibos ya vencidos
+CreateRecibosJob            // 09:00 AM - Genera recibos para placas que vencen (15 días antes)
+NotifyVencimientoRecibosJob // 09:30 AM - Notifica recibos próximos a vencer (7, 3, 1 día)
+NotifyRecibosVencidosJob    // 09:30 AM - Notifica recibos ya vencidos (diariamente)
 ```
 
 **IMPORTANTE:**
 
--   Los jobs usan `ShouldQueue` - verificar configuración de colas para deployment
--   **RenovarCobroPlacasJob** se ejecuta ANTES de CreateRecibosJob para preparar nuevos periodos
--   Los cobros permanecen en estado "activo" para permitir facturación recurrente
--   Un cobro solo se marca como "procesado" manualmente cuando ya no se necesita
+- Los jobs usan `ShouldQueue` - verificar configuración de colas para deployment
+- **RenovarCobroPlacasJob** se ejecuta ANTES de CreateRecibosJob para preparar nuevos periodos
+- Los cobros permanecen en estado "activo" para permitir facturación recurrente
+- Un cobro solo se marca como "procesado" manualmente cuando ya no se necesita
+
+### Sistema de Notificaciones WhatsApp
+
+El sistema usa un campo JSON `notificaciones_enviadas` para trackear todas las notificaciones:
+
+**Flujo de Notificaciones:**
+
+1. **CreateRecibosJob**: Genera recibos 15 días antes del vencimiento, establece `proxima_notificacion`
+2. **NotifyVencimientoRecibosJob**: Envía alertas en días configurados (7, 3, 1), registra en `notificaciones_enviadas`
+3. **NotifyRecibosVencidosJob**: Envía notificación DIARIA mientras esté vencido y no pagado
+4. **marcarComoPagado()**: Cancela todas las notificaciones futuras (`proxima_notificacion = null`)
+
+**Características clave:**
+
+- Usa `notificaciones_enviadas` (JSON array) en lugar de flag `enviado_whatsapp`
+- Previene duplicados verificando si ya se envió HOY
+- Si un job falla y reinicia, NO reenvía a quienes ya recibieron notificación ese día
+- Al pagar un recibo, las notificaciones se detienen automáticamente
+- Múltiples teléfonos por cliente: envía a `telefono`, `telefono_1`, `telefono_2`, `telefono_3`
+
+**Estructura de notificaciones_enviadas:**
+
+```json
+[
+    {
+        "tipo": "creacion_recibo",
+        "fecha_enviada": "2026-04-15T09:00:00Z",
+        "dias_antes_vencimiento": 15
+    },
+    {
+        "tipo": "recordatorio_pago",
+        "fecha_enviada": "2026-04-22T09:30:00Z",
+        "dias_antes_vencimiento": 7
+    }
+]
+```
 
 ## 🎨 Frontend: Livewire + WireUI + Flux UI
 
@@ -78,10 +119,10 @@ public function refreshClientes(): void
 
 ### UI Components
 
--   **WireUI** (`x-button`, `x-input`, `x-badge`, `x-select`): Componentes interactivos principales
--   **Flux UI** (`flux:button`, `flux:input`): Componentes estáticos/decorativos
--   Verificar sibling components antes de crear nuevos
--   Dark mode: Usar clases `dark:` en todos los componentes nuevos
+- **WireUI** (`x-button`, `x-input`, `x-badge`, `x-select`): Componentes interactivos principales
+- **Flux UI** (`flux:button`, `flux:input`): Componentes estáticos/decorativos
+- Verificar sibling components antes de crear nuevos
+- Dark mode: Usar clases `dark:` en todos los componentes nuevos
 
 ### Validación
 
@@ -105,10 +146,12 @@ protected function validationAttributes(): array {
 ### Relaciones Clave
 
 ```php
-Cliente → hasMany(Cobro)
+Cliente → hasMany(Cobro), hasMany(Recibo)
 Cobro → belongsTo(Cliente), hasMany(CobroPlaca), hasMany(Recibo)
 CobroPlaca → belongsTo(Cobro), hasMany(ReciboDetalle)
-Recibo → belongsTo(Cliente), belongsTo(Cobro), belongsTo(CobroPlaca)
+Recibo → belongsTo(Cliente), belongsTo(Cobro), belongsTo(CobroPlaca), hasMany(ReciboDetalle)
+ReciboDetalle → belongsTo(Recibo), belongsTo(CobroPlaca)
+PlantillaMensaje → ninguna relación (catálogo independiente)
 ```
 
 ### Scopes Comunes
@@ -116,38 +159,59 @@ Recibo → belongsTo(Cliente), belongsTo(Cobro), belongsTo(CobroPlaca)
 ```php
 Cliente::activos()
 Recibo::where('estado_recibo', 'pendiente')
+Recibo::whereDate('proxima_notificacion', '<=', now())
 CobroPlaca::whereDate('fecha_fin', '>=', now())
+PlantillaMensaje::porTipo('creacion_recibo')
 ```
 
 ### Tipos de Datos Críticos
 
--   Montos: `decimal:2` (monto_recibo, monto_pagado, precio_base)
--   Fechas: `date` (fecha_emision, fecha_vencimiento)
--   JSON: `array` (data_cliente, data_servicio, notificaciones_enviadas)
+- Montos: `decimal:2` (monto_recibo, monto_pagado, precio_base)
+- Fechas: `date` (fecha_emision, fecha_vencimiento)
+- Datetime: `datetime` (proxima_notificacion, created_at)
+- JSON: `array` (data_cliente, data_servicio, data_cobro, notificaciones_enviadas)
 
 ## ⚙️ Convenciones del Proyecto
 
 ### PHP/Laravel
 
--   **Fechas en español:** `$cliente->created_at->format('d/m/Y')`
--   **Estado en español:** 'Activo', 'Inactivo', 'pendiente', 'pagado', 'vencido'
--   **NO usar Pest** - este proyecto usa PHPUnit exclusivamente
--   **Casts en property, NO método:** Los modelos usan `protected $casts = []`
--   **SoftDeletes:** Cliente usa `SoftDeletes` - otros modelos NO
+- **Fechas en español:** `$cliente->created_at->format('d/m/Y')`
+- **Estado en español:** 'Activo', 'Inactivo', 'pendiente', 'pagado', 'vencido'
+- **NO usar Pest** - este proyecto usa PHPUnit exclusivamente
+- **Casts en property, NO método:** Los modelos usan `protected $casts = []`
+- **SoftDeletes:** Cliente usa `SoftDeletes` - otros modelos NO
 
 ### Naming Conventions
 
--   Campos DB: `snake_case` (nombre_cliente, fecha_vencimiento)
--   Métodos: `camelCase` (getTelefonoPrincipal, recibosNoPagados)
--   Scopes: `scopeNombre` (scopeActivos, scopeInactivos)
--   Relaciones: singular/plural según tipo (cliente(), cobros())
+- Campos DB: `snake_case` (nombre_cliente, fecha_vencimiento)
+- Métodos: `camelCase` (getTelefonoPrincipal, recibosNoPagados)
+- Scopes: `scopeNombre` (scopeActivos, scopeInactivos)
+- Relaciones: singular/plural según tipo (cliente(), cobros())
 
 ### Livewire Específico
 
--   Props públicas para binding: `public string $nombre_cliente = '';`
--   Métodos prefijados: `openCreateForm()`, `openEditForm()`, `openModalDelete()`
--   Reset page on search: `updatingSearch() { $this->resetPage(); }`
--   Usar `#[Url]` para search params persistentes
+- Props públicas para binding: `public string $nombre_cliente = '';`
+- Métodos prefijados: `openCreateForm()`, `openEditForm()`, `openModalDelete()`
+- Reset page on search: `updatingSearch() { $this->resetPage(); }`
+- Usar `#[Url]` para search params persistentes
+
+### Búsqueda en Componentes Index
+
+Al implementar búsqueda en componentes tipo Index, usar doble estrategia:
+
+1. Búsqueda en campos JSON snapshot (datos históricos)
+2. Búsqueda en relaciones del modelo (datos actuales)
+
+```php
+// Ejemplo: búsqueda de recibos por nombre de cliente
+$query->where(function ($q) {
+    $q->where('numero_recibo', 'like', '%' . $this->search . '%')
+      ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(data_cliente, '$.nombre_cliente')) LIKE ?", ['%' . $this->search . '%'])
+      ->orWhereHas('cliente', function ($clienteQuery) {
+          $clienteQuery->where('nombre_cliente', 'like', '%' . $this->search . '%');
+      });
+});
+```
 
 ## 🔧 Desarrollo
 
@@ -181,12 +245,22 @@ El sistema soporta facturación recurrente automática:
 3. Los cobros permanecen "activos" indefinidamente hasta marcarse como "procesado" manualmente
 4. Cada placa puede renovarse múltiples veces con diferentes fechas de periodo
 
+### Prevención de Duplicados en Notificaciones
+
+**Protecciones implementadas:**
+
+- ✅ **NotifyRecibosVencidosJob**: Verifica si ya se envió notificación HOY antes de reenviar
+- ✅ **NotifyVencimientoRecibosJob**: Filtra recibos con `fecha_pago IS NULL` para excluir pagados
+- ✅ **marcarComoPagado**: Establece `proxima_notificacion = null` para detener alertas futuras
+- ✅ **Reinicio de jobs**: Si un job falla y se reinicia, solo envía a quienes NO recibieron hoy
+- ✅ **Múltiples teléfonos**: Envía a todos los teléfonos del cliente sin duplicar mensajes
+
 ### Deployment (cPanel - Ver DEPLOYMENT.md)
 
--   Git deploy sin terminal access
--   Queue procesado via cron cada 5 minutos
--   Archivos estáticos: `npm run build` genera en `public/build/`
--   Scheduler: requiere cron job de `php artisan schedule:run`
+- Git deploy sin terminal access
+- Queue procesado via cron cada 5 minutos
+- Archivos estáticos: `npm run build` genera en `public/build/`
+- Scheduler: requiere cron job de `php artisan schedule:run`
 
 ## 🚨 Puntos Críticos
 
@@ -197,6 +271,20 @@ El sistema soporta facturación recurrente automática:
 WhatsAppService::sendMessage($number, $message)
 // Usado en NotifyVencimientoRecibosJob y NotifyRecibosVencidosJob
 ```
+
+**Sistema de Plantillas:**
+
+- Las plantillas se gestionan desde `PlantillaMensaje` model
+- Tipos disponibles: `creacion_recibo`, `recordatorio_pago`, `recibo_vencido`
+- Variables soportadas: `{cliente_nombre}`, `{numero_recibo}`, `{monto_recibo}`, `{fecha_vencimiento}`, `{placas_recibo}`, etc.
+- Método `procesarMensaje($variables)` reemplaza las variables en la plantilla
+
+**Tracking de Notificaciones:**
+
+- Campo `notificaciones_enviadas` (JSON) registra todas las notificaciones
+- Campo `proxima_notificacion` (datetime) programa la siguiente alerta
+- Al marcar como pagado, `proxima_notificacion = null` cancela notificaciones futuras
+- Los jobs verifican si ya se envió notificación HOY para evitar duplicados
 
 ### Prorrateado de Montos
 
@@ -211,10 +299,10 @@ El sistema calcula montos prorrateados para placas:
 
 ### Estados de Recibos
 
--   `pendiente` → recién generado
--   `vencido` → fecha_vencimiento pasada
--   `pagado` → tiene fecha_pago y monto_pagado
--   `anulado` → tiene fecha_anulacion y motivo_anulacion
+- `pendiente` → recién generado
+- `vencido` → fecha_vencimiento pasada
+- `pagado` → tiene fecha_pago y monto_pagado
+- `anulado` → tiene fecha_anulacion y motivo_anulacion
 
 ### PDF Generation
 
@@ -242,12 +330,12 @@ public function test_cliente_puede_tener_multiples_telefonos(): void {
 
 ## 🛠️ Laravel Boost MCP Tools
 
--   `tinker` - Ejecutar PHP/Eloquent queries
--   `database-query` - SQL readonly
--   `search-docs` - Buscar docs de Laravel/Livewire/Tailwind
--   `list-artisan-commands` - Ver comandos disponibles
--   `browser-logs` - Ver errores frontend
--   `get-absolute-url` - Generar URLs del proyecto
+- `tinker` - Ejecutar PHP/Eloquent queries
+- `database-query` - SQL readonly
+- `search-docs` - Buscar docs de Laravel/Livewire/Tailwind
+- `list-artisan-commands` - Ver comandos disponibles
+- `browser-logs` - Ver errores frontend
+- `get-absolute-url` - Generar URLs del proyecto
 
 ---
 
@@ -262,80 +350,80 @@ The Laravel Boost guidelines are specifically curated by Laravel maintainers for
 
 This application is a Laravel application and its main Laravel ecosystems package & versions are below. You are an expert with them all. Ensure you abide by these specific packages & versions.
 
--   php - 8.3.15
--   laravel/framework (LARAVEL) - v12
--   laravel/prompts (PROMPTS) - v0
--   livewire/livewire (LIVEWIRE) - v3
--   livewire/volt (VOLT) - v1
--   laravel/pint (PINT) - v1
--   laravel/sail (SAIL) - v1
--   phpunit/phpunit (PHPUNIT) - v11
--   tailwindcss (TAILWINDCSS) - v4
--   wireui/wireui (WIREUI) - v3
+- php - 8.3.15
+- laravel/framework (LARAVEL) - v12
+- laravel/prompts (PROMPTS) - v0
+- livewire/livewire (LIVEWIRE) - v3
+- livewire/volt (VOLT) - v1
+- laravel/pint (PINT) - v1
+- laravel/sail (SAIL) - v1
+- phpunit/phpunit (PHPUNIT) - v11
+- tailwindcss (TAILWINDCSS) - v4
+- wireui/wireui (WIREUI) - v3
 
 ## Conventions
 
--   You must follow all existing code conventions used in this application. When creating or editing a file, check sibling files for the correct structure, approach, naming.
--   Use descriptive names for variables and methods. For example, `isRegisteredForDiscounts`, not `discount()`.
--   Check for existing components to reuse before writing a new one.
+- You must follow all existing code conventions used in this application. When creating or editing a file, check sibling files for the correct structure, approach, naming.
+- Use descriptive names for variables and methods. For example, `isRegisteredForDiscounts`, not `discount()`.
+- Check for existing components to reuse before writing a new one.
 
 ## Verification Scripts
 
--   Do not create verification scripts or tinker when tests cover that functionality and prove it works. Unit and feature tests are more important.
+- Do not create verification scripts or tinker when tests cover that functionality and prove it works. Unit and feature tests are more important.
 
 ## Application Structure & Architecture
 
--   Stick to existing directory structure - don't create new base folders without approval.
--   Do not change the application's dependencies without approval.
+- Stick to existing directory structure - don't create new base folders without approval.
+- Do not change the application's dependencies without approval.
 
 ## Frontend Bundling
 
--   If the user doesn't see a frontend change reflected in the UI, it could mean they need to run `npm run build`, `npm run dev`, or `composer run dev`. Ask them.
+- If the user doesn't see a frontend change reflected in the UI, it could mean they need to run `npm run build`, `npm run dev`, or `composer run dev`. Ask them.
 
 ## Replies
 
--   Be concise in your explanations - focus on what's important rather than explaining obvious details.
+- Be concise in your explanations - focus on what's important rather than explaining obvious details.
 
 ## Documentation Files
 
--   You must only create documentation files if explicitly requested by the user.
+- You must only create documentation files if explicitly requested by the user.
 
 === boost rules ===
 
 ## Laravel Boost
 
--   Laravel Boost is an MCP server that comes with powerful tools designed specifically for this application. Use them.
+- Laravel Boost is an MCP server that comes with powerful tools designed specifically for this application. Use them.
 
 ## Artisan
 
--   Use the `list-artisan-commands` tool when you need to call an Artisan command to double check the available parameters.
+- Use the `list-artisan-commands` tool when you need to call an Artisan command to double check the available parameters.
 
 ## URLs
 
--   Whenever you share a project URL with the user you should use the `get-absolute-url` tool to ensure you're using the correct scheme, domain / IP, and port.
+- Whenever you share a project URL with the user you should use the `get-absolute-url` tool to ensure you're using the correct scheme, domain / IP, and port.
 
 ## Tinker / Debugging
 
--   You should use the `tinker` tool when you need to execute PHP to debug code or query Eloquent models directly.
--   Use the `database-query` tool when you only need to read from the database.
+- You should use the `tinker` tool when you need to execute PHP to debug code or query Eloquent models directly.
+- Use the `database-query` tool when you only need to read from the database.
 
 ## Reading Browser Logs With the `browser-logs` Tool
 
--   You can read browser logs, errors, and exceptions using the `browser-logs` tool from Boost.
--   Only recent browser logs will be useful - ignore old logs.
+- You can read browser logs, errors, and exceptions using the `browser-logs` tool from Boost.
+- Only recent browser logs will be useful - ignore old logs.
 
 ## Searching Documentation (Critically Important)
 
--   Boost comes with a powerful `search-docs` tool you should use before any other approaches. This tool automatically passes a list of installed packages and their versions to the remote Boost API, so it returns only version-specific documentation specific for the user's circumstance. You should pass an array of packages to filter on if you know you need docs for particular packages.
--   The 'search-docs' tool is perfect for all Laravel related packages, including Laravel, Inertia, Livewire, Filament, Tailwind, Pest, Nova, Nightwatch, etc.
--   You must use this tool to search for Laravel-ecosystem documentation before falling back to other approaches.
--   Search the documentation before making code changes to ensure we are taking the correct approach.
--   Use multiple, broad, simple, topic based queries to start. For example: `['rate limiting', 'routing rate limiting', 'routing']`.
--   Do not add package names to queries - package information is already shared. For example, use `test resource table`, not `filament 4 test resource table`.
+- Boost comes with a powerful `search-docs` tool you should use before any other approaches. This tool automatically passes a list of installed packages and their versions to the remote Boost API, so it returns only version-specific documentation specific for the user's circumstance. You should pass an array of packages to filter on if you know you need docs for particular packages.
+- The 'search-docs' tool is perfect for all Laravel related packages, including Laravel, Inertia, Livewire, Filament, Tailwind, Pest, Nova, Nightwatch, etc.
+- You must use this tool to search for Laravel-ecosystem documentation before falling back to other approaches.
+- Search the documentation before making code changes to ensure we are taking the correct approach.
+- Use multiple, broad, simple, topic based queries to start. For example: `['rate limiting', 'routing rate limiting', 'routing']`.
+- Do not add package names to queries - package information is already shared. For example, use `test resource table`, not `filament 4 test resource table`.
 
 ### Available Search Syntax
 
--   You can and should pass multiple queries at once. The most relevant results will be returned first.
+- You can and should pass multiple queries at once. The most relevant results will be returned first.
 
 1. Simple Word Searches with auto-stemming - query=authentication - finds 'authenticate' and 'auth'
 2. Multiple Words (AND Logic) - query=rate limit - finds knowledge containing both "rate" AND "limit"
@@ -347,18 +435,18 @@ This application is a Laravel application and its main Laravel ecosystems packag
 
 ## PHP
 
--   Always use curly braces for control structures, even if it has one line.
+- Always use curly braces for control structures, even if it has one line.
 
 ### Constructors
 
--   Use PHP 8 constructor property promotion in `__construct()`.
-    -   <code-snippet>public function \_\_construct(public GitHub $github) { }</code-snippet>
--   Do not allow empty `__construct()` methods with zero parameters.
+- Use PHP 8 constructor property promotion in `__construct()`.
+    - <code-snippet>public function \_\_construct(public GitHub $github) { }</code-snippet>
+- Do not allow empty `__construct()` methods with zero parameters.
 
 ### Type Declarations
 
--   Always use explicit return type declarations for methods and functions.
--   Use appropriate PHP type hints for method parameters.
+- Always use explicit return type declarations for methods and functions.
+- Use appropriate PHP type hints for method parameters.
 
 <code-snippet name="Explicit Return Types and Method Params" lang="php">
 protected function isAccessible(User $user, ?string $path = null): bool
@@ -369,112 +457,112 @@ protected function isAccessible(User $user, ?string $path = null): bool
 
 ## Comments
 
--   Prefer PHPDoc blocks over comments. Never use comments within the code itself unless there is something _very_ complex going on.
+- Prefer PHPDoc blocks over comments. Never use comments within the code itself unless there is something _very_ complex going on.
 
 ## PHPDoc Blocks
 
--   Add useful array shape type definitions for arrays when appropriate.
+- Add useful array shape type definitions for arrays when appropriate.
 
 ## Enums
 
--   Typically, keys in an Enum should be TitleCase. For example: `FavoritePerson`, `BestLake`, `Monthly`.
+- Typically, keys in an Enum should be TitleCase. For example: `FavoritePerson`, `BestLake`, `Monthly`.
 
 === herd rules ===
 
 ## Laravel Herd
 
--   The application is served by Laravel Herd and will be available at: https?://[kebab-case-project-dir].test. Use the `get-absolute-url` tool to generate URLs for the user to ensure valid URLs.
--   You must not run any commands to make the site available via HTTP(s). It is _always_ available through Laravel Herd.
+- The application is served by Laravel Herd and will be available at: https?://[kebab-case-project-dir].test. Use the `get-absolute-url` tool to generate URLs for the user to ensure valid URLs.
+- You must not run any commands to make the site available via HTTP(s). It is _always_ available through Laravel Herd.
 
 === laravel/core rules ===
 
 ## Do Things the Laravel Way
 
--   Use `php artisan make:` commands to create new files (i.e. migrations, controllers, models, etc.). You can list available Artisan commands using the `list-artisan-commands` tool.
--   If you're creating a generic PHP class, use `artisan make:class`.
--   Pass `--no-interaction` to all Artisan commands to ensure they work without user input. You should also pass the correct `--options` to ensure correct behavior.
+- Use `php artisan make:` commands to create new files (i.e. migrations, controllers, models, etc.). You can list available Artisan commands using the `list-artisan-commands` tool.
+- If you're creating a generic PHP class, use `artisan make:class`.
+- Pass `--no-interaction` to all Artisan commands to ensure they work without user input. You should also pass the correct `--options` to ensure correct behavior.
 
 ### Database
 
--   Always use proper Eloquent relationship methods with return type hints. Prefer relationship methods over raw queries or manual joins.
--   Use Eloquent models and relationships before suggesting raw database queries
--   Avoid `DB::`; prefer `Model::query()`. Generate code that leverages Laravel's ORM capabilities rather than bypassing them.
--   Generate code that prevents N+1 query problems by using eager loading.
--   Use Laravel's query builder for very complex database operations.
+- Always use proper Eloquent relationship methods with return type hints. Prefer relationship methods over raw queries or manual joins.
+- Use Eloquent models and relationships before suggesting raw database queries
+- Avoid `DB::`; prefer `Model::query()`. Generate code that leverages Laravel's ORM capabilities rather than bypassing them.
+- Generate code that prevents N+1 query problems by using eager loading.
+- Use Laravel's query builder for very complex database operations.
 
 ### Model Creation
 
--   When creating new models, create useful factories and seeders for them too. Ask the user if they need any other things, using `list-artisan-commands` to check the available options to `php artisan make:model`.
+- When creating new models, create useful factories and seeders for them too. Ask the user if they need any other things, using `list-artisan-commands` to check the available options to `php artisan make:model`.
 
 ### APIs & Eloquent Resources
 
--   For APIs, default to using Eloquent API Resources and API versioning unless existing API routes do not, then you should follow existing application convention.
+- For APIs, default to using Eloquent API Resources and API versioning unless existing API routes do not, then you should follow existing application convention.
 
 ### Controllers & Validation
 
--   Always create Form Request classes for validation rather than inline validation in controllers. Include both validation rules and custom error messages.
--   Check sibling Form Requests to see if the application uses array or string based validation rules.
+- Always create Form Request classes for validation rather than inline validation in controllers. Include both validation rules and custom error messages.
+- Check sibling Form Requests to see if the application uses array or string based validation rules.
 
 ### Queues
 
--   Use queued jobs for time-consuming operations with the `ShouldQueue` interface.
+- Use queued jobs for time-consuming operations with the `ShouldQueue` interface.
 
 ### Authentication & Authorization
 
--   Use Laravel's built-in authentication and authorization features (gates, policies, Sanctum, etc.).
+- Use Laravel's built-in authentication and authorization features (gates, policies, Sanctum, etc.).
 
 ### URL Generation
 
--   When generating links to other pages, prefer named routes and the `route()` function.
+- When generating links to other pages, prefer named routes and the `route()` function.
 
 ### Configuration
 
--   Use environment variables only in configuration files - never use the `env()` function directly outside of config files. Always use `config('app.name')`, not `env('APP_NAME')`.
+- Use environment variables only in configuration files - never use the `env()` function directly outside of config files. Always use `config('app.name')`, not `env('APP_NAME')`.
 
 ### Testing
 
--   When creating models for tests, use the factories for the models. Check if the factory has custom states that can be used before manually setting up the model.
--   Faker: Use methods such as `$this->faker->word()` or `fake()->randomDigit()`. Follow existing conventions whether to use `$this->faker` or `fake()`.
--   When creating tests, make use of `php artisan make:test [options] <name>` to create a feature test, and pass `--unit` to create a unit test. Most tests should be feature tests.
+- When creating models for tests, use the factories for the models. Check if the factory has custom states that can be used before manually setting up the model.
+- Faker: Use methods such as `$this->faker->word()` or `fake()->randomDigit()`. Follow existing conventions whether to use `$this->faker` or `fake()`.
+- When creating tests, make use of `php artisan make:test [options] <name>` to create a feature test, and pass `--unit` to create a unit test. Most tests should be feature tests.
 
 ### Vite Error
 
--   If you receive an "Illuminate\Foundation\ViteException: Unable to locate file in Vite manifest" error, you can run `npm run build` or ask the user to run `npm run dev` or `composer run dev`.
+- If you receive an "Illuminate\Foundation\ViteException: Unable to locate file in Vite manifest" error, you can run `npm run build` or ask the user to run `npm run dev` or `composer run dev`.
 
 === laravel/v12 rules ===
 
 ## Laravel 12
 
--   Use the `search-docs` tool to get version specific documentation.
--   Since Laravel 11, Laravel has a new streamlined file structure which this project uses.
+- Use the `search-docs` tool to get version specific documentation.
+- Since Laravel 11, Laravel has a new streamlined file structure which this project uses.
 
 ### Laravel 12 Structure
 
--   No middleware files in `app/Http/Middleware/`.
--   `bootstrap/app.php` is the file to register middleware, exceptions, and routing files.
--   `bootstrap/providers.php` contains application specific service providers.
--   **No app\Console\Kernel.php** - use `bootstrap/app.php` or `routes/console.php` for console configuration.
--   **Commands auto-register** - files in `app/Console/Commands/` are automatically available and do not require manual registration.
+- No middleware files in `app/Http/Middleware/`.
+- `bootstrap/app.php` is the file to register middleware, exceptions, and routing files.
+- `bootstrap/providers.php` contains application specific service providers.
+- **No app\Console\Kernel.php** - use `bootstrap/app.php` or `routes/console.php` for console configuration.
+- **Commands auto-register** - files in `app/Console/Commands/` are automatically available and do not require manual registration.
 
 ### Database
 
--   When modifying a column, the migration must include all of the attributes that were previously defined on the column. Otherwise, they will be dropped and lost.
--   Laravel 11 allows limiting eagerly loaded records natively, without external packages: `$query->latest()->limit(10);`.
+- When modifying a column, the migration must include all of the attributes that were previously defined on the column. Otherwise, they will be dropped and lost.
+- Laravel 11 allows limiting eagerly loaded records natively, without external packages: `$query->latest()->limit(10);`.
 
 ### Models
 
--   Casts can and likely should be set in a `casts()` method on a model rather than the `$casts` property. Follow existing conventions from other models.
+- Casts can and likely should be set in a `casts()` method on a model rather than the `$casts` property. Follow existing conventions from other models.
 
 === fluxui-free/core rules ===
 
 ## Flux UI Free
 
--   This project is using the free edition of Flux UI. It has full access to the free components and variants, but does not have access to the Pro components.
--   Flux UI is a component library for Livewire. Flux is a robust, hand-crafted, UI component library for your Livewire applications. It's built using Tailwind CSS and provides a set of components that are easy to use and customize.
--   You should use Flux UI components when available.
--   Fallback to standard Blade components if Flux is unavailable.
--   If available, use Laravel Boost's `search-docs` tool to get the exact documentation and code snippets available for this project.
--   Flux UI components look like this:
+- This project is using the free edition of Flux UI. It has full access to the free components and variants, but does not have access to the Pro components.
+- Flux UI is a component library for Livewire. Flux is a robust, hand-crafted, UI component library for your Livewire applications. It's built using Tailwind CSS and provides a set of components that are easy to use and customize.
+- You should use Flux UI components when available.
+- Fallback to standard Blade components if Flux is unavailable.
+- If available, use Laravel Boost's `search-docs` tool to get the exact documentation and code snippets available for this project.
+- Flux UI components look like this:
 
 <code-snippet name="Flux UI Component Usage Example" lang="blade">
     <flux:button variant="primary"/>
@@ -492,16 +580,16 @@ avatar, badge, brand, breadcrumbs, button, callout, checkbox, dropdown, field, h
 
 ## Livewire Core
 
--   Use the `search-docs` tool to find exact version specific documentation for how to write Livewire & Livewire tests.
--   Use the `php artisan make:livewire [Posts\\CreatePost]` artisan command to create new components
--   State should live on the server, with the UI reflecting it.
--   All Livewire requests hit the Laravel backend, they're like regular HTTP requests. Always validate form data, and run authorization checks in Livewire actions.
+- Use the `search-docs` tool to find exact version specific documentation for how to write Livewire & Livewire tests.
+- Use the `php artisan make:livewire [Posts\\CreatePost]` artisan command to create new components
+- State should live on the server, with the UI reflecting it.
+- All Livewire requests hit the Laravel backend, they're like regular HTTP requests. Always validate form data, and run authorization checks in Livewire actions.
 
 ## Livewire Best Practices
 
--   Livewire components require a single root element.
--   Use `wire:loading` and `wire:dirty` for delightful loading states.
--   Add `wire:key` in loops:
+- Livewire components require a single root element.
+- Use `wire:loading` and `wire:dirty` for delightful loading states.
+- Add `wire:key` in loops:
 
     ```blade
     @foreach ($items as $item)
@@ -511,7 +599,7 @@ avatar, badge, brand, breadcrumbs, button, callout, checkbox, dropdown, field, h
     @endforeach
     ```
 
--   Prefer lifecycle hooks like `mount()`, `updatedFoo()`) for initialization and reactive side effects:
+- Prefer lifecycle hooks like `mount()`, `updatedFoo()`) for initialization and reactive side effects:
 
 <code-snippet name="Lifecycle hook examples" lang="php">
     public function mount(User $user) { $this->user = $user; }
@@ -540,24 +628,24 @@ avatar, badge, brand, breadcrumbs, button, callout, checkbox, dropdown, field, h
 
 ### Key Changes From Livewire 2
 
--   These things changed in Livewire 2, but may not have been updated in this application. Verify this application's setup to ensure you conform with application conventions.
-    -   Use `wire:model.live` for real-time updates, `wire:model` is now deferred by default.
-    -   Components now use the `App\Livewire` namespace (not `App\Http\Livewire`).
-    -   Use `$this->dispatch()` to dispatch events (not `emit` or `dispatchBrowserEvent`).
-    -   Use the `layouts.app` view as the typical layout path.
+- These things changed in Livewire 2, but may not have been updated in this application. Verify this application's setup to ensure you conform with application conventions.
+    - Use `wire:model.live` for real-time updates, `wire:model` is now deferred by default.
+    - Components now use the `App\Livewire` namespace (not `App\Http\Livewire`).
+    - Use `$this->dispatch()` to dispatch events (not `emit` or `dispatchBrowserEvent`).
+    - Use the `layouts.app` view as the typical layout path.
 
 ### New Directives
 
--   `wire:show`, `wire:transition`, `wire:cloak`, `wire:offline`, `wire:target` are available for use. Use the documentation to find usage examples.
+- `wire:show`, `wire:transition`, `wire:cloak`, `wire:offline`, `wire:target` are available for use. Use the documentation to find usage examples.
 
 ### Alpine
 
--   Alpine is now included with Livewire, don't manually include Alpine.js.
--   Plugins included with Alpine: persist, intersect, collapse, and focus.
+- Alpine is now included with Livewire, don't manually include Alpine.js.
+- Plugins included with Alpine: persist, intersect, collapse, and focus.
 
 ### Lifecycle Hooks
 
--   You can listen for `livewire:init` to hook into Livewire initialization, and `fail.status === 419` for the page expiring:
+- You can listen for `livewire:init` to hook into Livewire initialization, and `fail.status === 419` for the page expiring:
 
 <code-snippet name="livewire:load example" lang="js">
 document.addEventListener('livewire:init', function () {
@@ -578,12 +666,12 @@ document.addEventListener('livewire:init', function () {
 
 ## Livewire Volt
 
--   This project uses Livewire Volt for interactivity within its pages. New pages requiring interactivity must also use Livewire Volt. There is documentation available for it.
--   Make new Volt components using `php artisan make:volt [name] [--test] [--pest]`
--   Volt is a **class-based** and **functional** API for Livewire that supports single-file components, allowing a component's PHP logic and Blade templates to co-exist in the same file
--   Livewire Volt allows PHP logic and Blade templates in one file. Components use the `@livewire("volt-anonymous-fragment-eyJuYW1lIjoidm9sdC1hbm9ueW1vdXMtZnJhZ21lbnQtYmQ5YWJiNTE3YWMyMTgwOTA1ZmUxMzAxODk0MGJiZmIiLCJwYXRoIjoic3RvcmFnZVxcZnJhbWV3b3JrXFx2aWV3c1wvMTUxYWRjZWRjMzBhMzllOWIxNzQ0ZDRiMWRjY2FjYWIuYmxhZGUucGhwIn0=", Livewire\Volt\Precompilers\ExtractFragments::componentArguments([...get_defined_vars(), ...array (
-    )]))
-    </code-snippet>
+- This project uses Livewire Volt for interactivity within its pages. New pages requiring interactivity must also use Livewire Volt. There is documentation available for it.
+- Make new Volt components using `php artisan make:volt [name] [--test] [--pest]`
+- Volt is a **class-based** and **functional** API for Livewire that supports single-file components, allowing a component's PHP logic and Blade templates to co-exist in the same file
+- Livewire Volt allows PHP logic and Blade templates in one file. Components use the `@livewire("volt-anonymous-fragment-eyJuYW1lIjoidm9sdC1hbm9ueW1vdXMtZnJhZ21lbnQtYmQ5YWJiNTE3YWMyMTgwOTA1ZmUxMzAxODk0MGJiZmIiLCJwYXRoIjoic3RvcmFnZVxcZnJhbWV3b3JrXFx2aWV3c1wvMTUxYWRjZWRjMzBhMzllOWIxNzQ0ZDRiMWRjY2FjYWIuYmxhZGUucGhwIn0=", Livewire\Volt\Precompilers\ExtractFragments::componentArguments([...get_defined_vars(), ...array (
+  )]))
+  </code-snippet>
 
 ### Volt Class Based Component Example
 
@@ -610,7 +698,7 @@ public $count = 0;
 
 ### Testing Volt & Volt Components
 
--   Use the existing directory for tests if it already exists. Otherwise, fallback to `tests/Feature/Volt`.
+- Use the existing directory for tests if it already exists. Otherwise, fallback to `tests/Feature/Volt`.
 
 <code-snippet name="Livewire Test Example" lang="php">
 use Livewire\Volt\Volt;
@@ -685,39 +773,39 @@ $delete = fn(Product $product) => $product->delete();
 
 ## Laravel Pint Code Formatter
 
--   You must run `vendor/bin/pint --dirty` before finalizing changes to ensure your code matches the project's expected style.
--   Do not run `vendor/bin/pint --test`, simply run `vendor/bin/pint` to fix any formatting issues.
+- You must run `vendor/bin/pint --dirty` before finalizing changes to ensure your code matches the project's expected style.
+- Do not run `vendor/bin/pint --test`, simply run `vendor/bin/pint` to fix any formatting issues.
 
 === phpunit/core rules ===
 
 ## PHPUnit Core
 
--   This application uses PHPUnit for testing. All tests must be written as PHPUnit classes. Use `php artisan make:test --phpunit <name>` to create a new test.
--   If you see a test using "Pest", convert it to PHPUnit.
--   Every time a test has been updated, run that singular test.
--   When the tests relating to your feature are passing, ask the user if they would like to also run the entire test suite to make sure everything is still passing.
--   Tests should test all of the happy paths, failure paths, and weird paths.
--   You must not remove any tests or test files from the tests directory without approval. These are not temporary or helper files, these are core to the application.
+- This application uses PHPUnit for testing. All tests must be written as PHPUnit classes. Use `php artisan make:test --phpunit <name>` to create a new test.
+- If you see a test using "Pest", convert it to PHPUnit.
+- Every time a test has been updated, run that singular test.
+- When the tests relating to your feature are passing, ask the user if they would like to also run the entire test suite to make sure everything is still passing.
+- Tests should test all of the happy paths, failure paths, and weird paths.
+- You must not remove any tests or test files from the tests directory without approval. These are not temporary or helper files, these are core to the application.
 
 ### Running Tests
 
--   Run the minimal number of tests, using an appropriate filter, before finalizing.
--   To run all tests: `php artisan test`.
--   To run all tests in a file: `php artisan test tests/Feature/ExampleTest.php`.
--   To filter on a particular test name: `php artisan test --filter=testName` (recommended after making a change to a related file).
+- Run the minimal number of tests, using an appropriate filter, before finalizing.
+- To run all tests: `php artisan test`.
+- To run all tests in a file: `php artisan test tests/Feature/ExampleTest.php`.
+- To filter on a particular test name: `php artisan test --filter=testName` (recommended after making a change to a related file).
 
 === tailwindcss/core rules ===
 
 ## Tailwind Core
 
--   Use Tailwind CSS classes to style HTML, check and use existing tailwind conventions within the project before writing your own.
--   Offer to extract repeated patterns into components that match the project's conventions (i.e. Blade, JSX, Vue, etc..)
--   Think through class placement, order, priority, and defaults - remove redundant classes, add classes to parent or child carefully to limit repetition, group elements logically
--   You can use the `search-docs` tool to get exact examples from the official documentation when needed.
+- Use Tailwind CSS classes to style HTML, check and use existing tailwind conventions within the project before writing your own.
+- Offer to extract repeated patterns into components that match the project's conventions (i.e. Blade, JSX, Vue, etc..)
+- Think through class placement, order, priority, and defaults - remove redundant classes, add classes to parent or child carefully to limit repetition, group elements logically
+- You can use the `search-docs` tool to get exact examples from the official documentation when needed.
 
 ### Spacing
 
--   When listing items, use gap utilities for spacing, don't use margins.
+- When listing items, use gap utilities for spacing, don't use margins.
 
       <code-snippet name="Valid Flex Gap Spacing Example" lang="html">
           <div class="flex gap-8">
@@ -729,29 +817,29 @@ $delete = fn(Product $product) => $product->delete();
 
 ### Dark Mode
 
--   If existing pages and components support dark mode, new pages and components must support dark mode in a similar way, typically using `dark:`.
+- If existing pages and components support dark mode, new pages and components must support dark mode in a similar way, typically using `dark:`.
 
 === tailwindcss/v4 rules ===
 
 ## Tailwind 4
 
--   Always use Tailwind CSS v4 - do not use the deprecated utilities.
--   `corePlugins` is not supported in Tailwind v4.
--   In Tailwind v4, you import Tailwind using a regular CSS `@import` statement, not using the `@tailwind` directives used in v3:
+- Always use Tailwind CSS v4 - do not use the deprecated utilities.
+- `corePlugins` is not supported in Tailwind v4.
+- In Tailwind v4, you import Tailwind using a regular CSS `@import` statement, not using the `@tailwind` directives used in v3:
 
 <code-snippet name="Tailwind v4 Import Tailwind Diff" lang="diff"
 
--   @tailwind base;
--   @tailwind components;
--   @tailwind utilities;
+- @tailwind base;
+- @tailwind components;
+- @tailwind utilities;
 
-*   @import "tailwindcss";
-    </code-snippet>
+* @import "tailwindcss";
+  </code-snippet>
 
 ### Replaced Utilities
 
--   Tailwind v4 removed deprecated utilities. Do not use the deprecated option - use the replacement.
--   Opacity values are still numeric.
+- Tailwind v4 removed deprecated utilities. Do not use the deprecated option - use the replacement.
+- Opacity values are still numeric.
 
 | Deprecated | Replacement |
 |------------+--------------|
@@ -771,6 +859,6 @@ $delete = fn(Product $product) => $product->delete();
 
 ## Test Enforcement
 
--   Every change must be programmatically tested. Write a new test or update an existing test, then run the affected tests to make sure they pass.
--   Run the minimum number of tests needed to ensure code quality and speed. Use `php artisan test` with a specific filename or filter.
-    </laravel-boost-guidelines>
+- Every change must be programmatically tested. Write a new test or update an existing test, then run the affected tests to make sure they pass.
+- Run the minimum number of tests needed to ensure code quality and speed. Use `php artisan test` with a specific filename or filter.
+  </laravel-boost-guidelines>
