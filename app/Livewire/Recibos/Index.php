@@ -212,33 +212,56 @@ class Index extends Component
     {
         $cobro = $recibo->cobro;
 
-        if ($cobro && in_array($cobro->periodo_facturacion, ['Mensual', 'Bimensual', 'Trimestral', 'Semestral', 'Anual'])) {
-            // Calcular las nuevas fechas según el período
-            $fechaFinActual = Carbon::parse($cobro->fecha_fin_periodo);
-            $nuevaFechaInicio = $fechaFinActual->addDay();
+        if (! $cobro || ! in_array($cobro->periodo_facturacion, ['Mensual', 'Bimensual', 'Trimestral', 'Semestral', 'Anual'])) {
+            return;
+        }
 
-            // Calcular nueva fecha fin según el período
-            $nuevaFechaFin = match ($cobro->periodo_facturacion) {
-                'Mensual' => $nuevaFechaInicio->copy()->addMonth()->subDay(),
-                'Bimensual' => $nuevaFechaInicio->copy()->addMonths(2)->subDay(),
-                'Trimestral' => $nuevaFechaInicio->copy()->addMonths(3)->subDay(),
-                'Semestral' => $nuevaFechaInicio->copy()->addMonths(6)->subDay(),
-                'Anual' => $nuevaFechaInicio->copy()->addYear()->subDay(),
-                default => $nuevaFechaInicio->copy()->addMonth()->subDay()
-            };
+        $fechaFinActual = Carbon::parse($cobro->fecha_fin_periodo);
 
-            // Actualizar el período del cobro
-            $cobro->update([
-                'fecha_inicio_periodo' => $nuevaFechaInicio,
-                'fecha_fin_periodo' => $nuevaFechaFin,
-                'estado' => 'activo', // Reactivar para el siguiente período
-            ]);
+        // Solo avanzar si el recibo pagado pertenece al período ACTUAL del cobro.
+        // Evita doble avance cuando el cliente paga un recibo de un período anterior.
+        if (! $recibo->fecha_vencimiento->eq($fechaFinActual)) {
+            return;
+        }
 
-            // Actualizar el período de todas las placas del cobro
-            $cobro->cobroPlacas()->update([
-                'fecha_inicio' => $nuevaFechaInicio,
-                'fecha_fin' => $nuevaFechaFin,
-            ]);
+        $nuevaFechaInicio = $fechaFinActual->copy()->addDay();
+
+        $nuevaFechaFin = match ($cobro->periodo_facturacion) {
+            'Mensual' => $nuevaFechaInicio->copy()->addMonth()->subDay(),
+            'Bimensual' => $nuevaFechaInicio->copy()->addMonths(2)->subDay(),
+            'Trimestral' => $nuevaFechaInicio->copy()->addMonths(3)->subDay(),
+            'Semestral' => $nuevaFechaInicio->copy()->addMonths(6)->subDay(),
+            'Anual' => $nuevaFechaInicio->copy()->addYear()->subDay(),
+            default => $nuevaFechaInicio->copy()->addMonth()->subDay()
+        };
+
+        $cobro->update([
+            'fecha_inicio_periodo' => $nuevaFechaInicio,
+            'fecha_fin_periodo' => $nuevaFechaFin,
+            'estado' => 'activo',
+        ]);
+
+        $montoCompleto = $cobro->monto_unitario ?? $cobro->monto_base;
+        $diasNuevoPeriodo = $nuevaFechaInicio->diffInDays($nuevaFechaFin) + 1;
+
+        // Avanzar solo las placas del período actual que NO hayan sido ya renovadas
+        // automáticamente por RenovarCobroPlacasJob (evita registros duplicados).
+        foreach ($cobro->cobroPlacas()->whereDate('fecha_fin', $fechaFinActual->toDateString())->get() as $placa) {
+            $yaRenovada = $cobro->cobroPlacas()
+                ->where('id', '!=', $placa->id)
+                ->where('placa', $placa->placa)
+                ->whereDate('fecha_inicio', $nuevaFechaInicio->toDateString())
+                ->exists();
+
+            if (! $yaRenovada) {
+                $placa->update([
+                    'fecha_inicio' => $nuevaFechaInicio,
+                    'fecha_fin' => $nuevaFechaFin,
+                    'factor_prorateo' => 1.0000,
+                    'dias_prorrateados' => $diasNuevoPeriodo,
+                    'monto_calculado' => $montoCompleto,
+                ]);
+            }
         }
     }
 

@@ -117,22 +117,21 @@ class RenovarCobroPlacasJob implements ShouldQueue
             $nuevaFechaInicio = Carbon::parse($placaVencida->fecha_fin)->addDay();
             $nuevaFechaFin = $this->calcularFechaFin($nuevaFechaInicio, $cobro->periodo_facturacion);
 
+            // La renovación siempre cubre el período completo: precio completo, sin prorrateo
+            $montoCompleto = $cobro->monto_unitario ?? $cobro->monto_base;
+            $diasPeriodo = $this->calcularDias($nuevaFechaInicio, $nuevaFechaFin);
+
             // Crear nueva placa para el siguiente periodo
-            $nuevaPlaca = CobroPlaca::create([
+            CobroPlaca::create([
                 'cobro_id' => $cobro->id,
                 'placa' => $placaVencida->placa,
                 'fecha_inicio' => $nuevaFechaInicio,
                 'fecha_fin' => $nuevaFechaFin,
-                'monto_calculado' => $placaVencida->monto_calculado,
-                'dias_prorrateados' => $this->calcularDias($nuevaFechaInicio, $nuevaFechaFin),
-                'factor_prorateo' => 1.0000, // Por defecto sin prorrateo
+                'monto_calculado' => $montoCompleto,
+                'dias_prorrateados' => $diasPeriodo,
+                'factor_prorateo' => 1.0000,
                 'observaciones' => "Renovación automática de placa {$placaVencida->placa}",
             ]);
-
-            // Si el cobro tiene prorrateo habilitado, recalcular
-            if ($cobro->tiene_prorateo) {
-                $nuevaPlaca->aplicarProrrateo();
-            }
 
             $placasRenovadas++;
 

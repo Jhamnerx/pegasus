@@ -30,9 +30,8 @@ class CreateRecibosJob implements ShouldQueue
     public function handle(): bool
     {
         try {
-            // Obtener días de alerta
-            $alertDays = explode(',', env('ALERT_DAYS', '7,3,1'));
-            $diasAnticipacion = max(array_map('intval', $alertDays));
+            // Días de anticipación para crear recibos (independiente de los días de alerta de notificaciones)
+            $diasAnticipacion = (int) env('RECEIPT_CREATE_DAYS', 15);
 
             // Calcular rango de fechas: desde hoy hasta el día máximo de anticipación
             $fechaHoy = Carbon::now()->toDateString();
@@ -136,7 +135,7 @@ class CreateRecibosJob implements ShouldQueue
                 'monto_base' => $cobro->monto_base,
                 'placas_incluidas' => $placas->pluck('placa')->toArray(),
             ],
-            'proxima_notificacion' => $this->calcularProximaNotificacion(),
+            'proxima_notificacion' => $this->calcularProximaNotificacion(Carbon::parse($placas->max('fecha_fin'))),
         ]);
 
         // Crear detalles para cada placa
@@ -180,12 +179,13 @@ class CreateRecibosJob implements ShouldQueue
     /**
      * Calcular próxima notificación
      */
-    private function calcularProximaNotificacion(): Carbon
+    private function calcularProximaNotificacion(Carbon $fechaVencimiento): Carbon
     {
         $alertDays = explode(',', env('ALERT_DAYS', '7,3,1'));
         $maxDias = max(array_map('intval', $alertDays));
 
-        return Carbon::now()->addDays($maxDias);
+        // Primera notificación = max(ALERT_DAYS) días ANTES del vencimiento
+        return $fechaVencimiento->copy()->subDays($maxDias);
     }
 
     /**
@@ -250,6 +250,9 @@ class CreateRecibosJob implements ShouldQueue
 
             if ($enviadoAlMenosUno) {
                 Log::info("Recibo enviado exitosamente al menos a un número: {$recibo->numero_recibo}");
+                // Registrar la notificación de creación para que proxima_notificacion
+                // avance al SIGUIENTE día de alerta (ej: 7 días) en vez de quedarse hoy.
+                $recibo->registrarNotificacionEnviada('creacion_recibo', Carbon::now());
             }
         } catch (\Exception $e) {
             Log::error("Excepción WhatsApp para recibo {$recibo->numero_recibo}: " . $e->getMessage());

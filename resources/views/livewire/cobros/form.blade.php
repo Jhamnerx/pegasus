@@ -138,19 +138,27 @@
 
                                             <!-- Indicador de monto / prorrateo -->
                                             @if (isset($placa['factor_prorateo']) && (float) $placa['factor_prorateo'] < 1.0)
-                                                <div class="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded px-2 py-1.5 mt-1">
-                                                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M4 19h16a2 2 0 002-2V7a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                                <div
+                                                    class="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded px-2 py-1.5 mt-1">
+                                                    <svg class="w-3.5 h-3.5 shrink-0" fill="none"
+                                                        viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M4 19h16a2 2 0 002-2V7a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                                     </svg>
                                                     <span>
-                                                        Prorrateo: <strong>{{ $placa['dias_prorrateados'] ?? '-' }} días</strong>
-                                                        · {{ number_format(($placa['factor_prorateo']) * 100, 1) }}% del período
-                                                        · Monto: <strong>{{ $moneda }} {{ number_format($placa['monto_calculado'] ?? 0, 2) }}</strong>
+                                                        Prorrateo: <strong>{{ $placa['dias_prorrateados'] ?? '-' }}
+                                                            días</strong>
+                                                        · {{ number_format($placa['factor_prorateo'] * 100, 1) }}% del
+                                                        período
+                                                        · Monto: <strong>{{ $moneda }}
+                                                            {{ number_format($placa['monto_calculado'] ?? 0, 2) }}</strong>
                                                     </span>
                                                 </div>
                                             @else
                                                 <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                                    Monto: {{ $moneda }} {{ number_format($placa['monto_calculado'] ?? 0, 2) }}
+                                                    Monto: {{ $moneda }}
+                                                    {{ number_format($placa['monto_calculado'] ?? 0, 2) }}
                                                 </div>
                                             @endif
 

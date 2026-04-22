@@ -373,7 +373,7 @@ class Form extends Component
                 'estado' => $this->estado,
                 'notas' => $this->notas,
                 'tiene_prorateo' => $this->tieneplacasReales()
-                    ? $this->placas->contains(fn ($p) => isset($p['factor_prorateo']) && (float) $p['factor_prorateo'] < 1.0)
+                    ? $this->placas->contains(fn($p) => isset($p['factor_prorateo']) && (float) $p['factor_prorateo'] < 1.0)
                     : false,
             ];
 
@@ -413,7 +413,7 @@ class Form extends Component
         } catch (\Exception $e) {
             $this->notification()->error(
                 'Error',
-                'Ha ocurrido un error al guardar el cobro: '.$e->getMessage()
+                'Ha ocurrido un error al guardar el cobro: ' . $e->getMessage()
             );
         }
     }
@@ -583,7 +583,7 @@ class Form extends Component
         if ($esMidPeriod && ($prorrateo['factor_prorateo'] < 1.0)) {
             $this->notification()->success(
                 'Placa agregada con prorrateo',
-                "{$nuevaPlacaData['placa']}: {$prorrateo['dias_prorrateados']} días restantes del período · {$this->moneda} ".number_format($prorrateo['monto_calculado'], 2)
+                "{$nuevaPlacaData['placa']}: {$prorrateo['dias_prorrateados']} días restantes del período · {$this->moneda} " . number_format($prorrateo['monto_calculado'], 2)
             );
         } else {
             $this->notification()->success(
@@ -774,7 +774,7 @@ class Form extends Component
                 if ($fechaInicioPlaca->lt($inicioPeriodo) || $fechaInicioPlaca->gt($finPeriodo)) {
                     $this->addError(
                         "placas.{$index}.fecha_inicio",
-                        'Debe estar entre '.$inicioPeriodo->format('d/m/Y').' y '.$finPeriodo->format('d/m/Y')
+                        'Debe estar entre ' . $inicioPeriodo->format('d/m/Y') . ' y ' . $finPeriodo->format('d/m/Y')
                     );
                 }
             }
@@ -785,7 +785,7 @@ class Form extends Component
                 if ($fechaFinPlaca->lt($inicioPeriodo) || $fechaFinPlaca->gt($finPeriodo)) {
                     $this->addError(
                         "placas.{$index}.fecha_fin",
-                        'Debe estar entre '.$inicioPeriodo->format('d/m/Y').' y '.$finPeriodo->format('d/m/Y')
+                        'Debe estar entre ' . $inicioPeriodo->format('d/m/Y') . ' y ' . $finPeriodo->format('d/m/Y')
                     );
                 }
 
@@ -842,8 +842,8 @@ class Form extends Component
                     if ($fechaInicioPlaca->lt($inicioPeriodo) || $fechaInicioPlaca->gt($finPeriodo)) {
                         $this->addError(
                             "placas.{$index}.fecha_inicio",
-                            'La fecha de inicio debe estar dentro del período del cobro ('.
-                                $inicioPeriodo->format('d/m/Y').' - '.$finPeriodo->format('d/m/Y').').'
+                            'La fecha de inicio debe estar dentro del período del cobro (' .
+                                $inicioPeriodo->format('d/m/Y') . ' - ' . $finPeriodo->format('d/m/Y') . ').'
                         );
                         $hasErrors = true;
                     }
@@ -863,8 +863,8 @@ class Form extends Component
                     if ($fechaFinPlaca->lt($inicioPeriodo) || $fechaFinPlaca->gt($finPeriodo)) {
                         $this->addError(
                             "placas.{$index}.fecha_fin",
-                            'La fecha de fin debe estar dentro del período del cobro ('.
-                                $inicioPeriodo->format('d/m/Y').' - '.$finPeriodo->format('d/m/Y').').'
+                            'La fecha de fin debe estar dentro del período del cobro (' .
+                                $inicioPeriodo->format('d/m/Y') . ' - ' . $finPeriodo->format('d/m/Y') . ').'
                         );
                         $hasErrors = true;
                     }
